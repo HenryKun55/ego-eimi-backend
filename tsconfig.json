@@ -13,5 +13,7 @@
     "incremental": true,
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true
-  }
+  },
+  "include": ["src", "scripts", "src/migrations"],
+  "exclude": ["node_modules", "dist", "test", "**/*spec.ts"]
 }
