@@ -13,6 +13,8 @@ import { DocumentsChunkModule } from './documents-chunk/documents-chunk.module'
 import { AuthModule } from './auth/auth.module'
 import { EmbeddingModule } from './embedding/embedding.module'
 import { QdrantModule } from './qdrant/qdrant.module'
+import { AskModule } from './ask/ask.module'
+import { LlmModule } from './llm/llm.module'
 
 @Module({
   imports: [
@@ -28,6 +30,9 @@ import { QdrantModule } from './qdrant/qdrant.module'
     AuthModule,
     EmbeddingModule,
     QdrantModule,
+
+    AskModule,
+    LlmModule,
   ],
 })
 export class AppModule {}

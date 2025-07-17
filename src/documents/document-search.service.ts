@@ -21,8 +21,6 @@ export class DocumentSearchService {
       )
     }
 
-    this.logger.log(`Buscando documento: ${query}`)
-
     const filter =
       userRoles && userRoles.length > 0
         ? {
@@ -35,6 +33,8 @@ export class DocumentSearchService {
             ],
           }
         : undefined
+
+    this.logger.log(`Buscando documento: ${query}`)
 
     const chunks = await this.documentsChunkService.searchSimilarChunks(
       query,
