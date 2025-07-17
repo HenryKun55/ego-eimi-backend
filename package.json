@@ -22,7 +22,8 @@
     "prepare-db": "bunx ts-node ./scripts/prepare-db.ts",
     "migration:run": "bunx typeorm migration:run --dataSource=./dist/scripts/data-source.js",
     "prepare:full-clean": "bun run build && bun run reset-db && bun run prepare-db && bun run migration:run",
-    "generate-migration": "bun run scripts/generate-migration.ts"
+    "generate-migration": "bun run scripts/generate-migration.ts",
+    "qdrant": "docker-compose up qdrant -d"
   },
   "engines": {
     "npm": ">=10.0.0",
@@ -36,6 +37,7 @@
     "@nestjs/mapped-types": "*",
     "@nestjs/passport": "^11.0.5",
     "@nestjs/platform-express": "^11.0.1",
+    "@qdrant/js-client-rest": "^1.14.1",
     "@types/bcrypt": "^5.0.2",
     "bcrypt": "^6.0.0",
     "class-transformer": "^0.5.1",

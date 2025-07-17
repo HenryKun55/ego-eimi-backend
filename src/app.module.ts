@@ -4,6 +4,7 @@ import { DocumentsModule } from './documents/documents.module'
 import { UsersModule } from './users/users.module'
 import { AuthModule } from './auth/auth.module'
 import { ConfigModule } from '@nestjs/config'
+import { QdrantModule } from './qdrant/qdrant.module'
 
 @Module({
   imports: [
@@ -12,6 +13,7 @@ import { ConfigModule } from '@nestjs/config'
     DocumentsModule,
     UsersModule,
     AuthModule,
+    QdrantModule,
   ],
   controllers: [],
   providers: [],
