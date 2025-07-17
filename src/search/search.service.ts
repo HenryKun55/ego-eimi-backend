@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common'
 import { QdrantClient } from '@qdrant/js-client-rest'
 import { ConfigService } from '@nestjs/config'
 import { LocalStrategyUserOutput } from 'src/auth/@types/user'
+import { EMBEDDING_MODELS } from 'src/embedding/embedding.schema'
 
 type User = {
   id: string
@@ -31,7 +32,7 @@ export class SearchService {
       },
       body: JSON.stringify({
         input: text,
-        model: 'nomic-embed-text-v1',
+        model: EMBEDDING_MODELS.LLAMA_4,
       }),
     })
 

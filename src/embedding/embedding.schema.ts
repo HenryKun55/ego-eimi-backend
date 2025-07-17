@@ -31,7 +31,7 @@ export type EmbeddingResponse = z.infer<typeof EmbeddingResponseSchema>
 export type EmbeddingError = z.infer<typeof EmbeddingErrorSchema>
 
 export const EMBEDDING_MODELS = {
-  NOMIC_EMBED_TEXT_V1: 'nomic-embed-text-v1',
+  LLAMA_4: 'meta-llama/llama-4-scout-17b-16e-instruct',
 } as const
 
 export const EMBEDDING_LIMITS = {

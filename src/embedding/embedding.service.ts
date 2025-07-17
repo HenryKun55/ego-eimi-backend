@@ -37,7 +37,7 @@ export class EmbeddingService {
     }
 
     const {
-      model = EMBEDDING_MODELS.NOMIC_EMBED_TEXT_V1,
+      model = EMBEDDING_MODELS.LLAMA_4,
       batchSize = EMBEDDING_LIMITS.MAX_BATCH_SIZE,
       maxRetries = EMBEDDING_LIMITS.MAX_RETRIES,
       retryDelay = EMBEDDING_LIMITS.RETRY_DELAY,
@@ -80,7 +80,7 @@ export class EmbeddingService {
     }
 
     const {
-      model = EMBEDDING_MODELS.NOMIC_EMBED_TEXT_V1,
+      model = EMBEDDING_MODELS.LLAMA_4,
       batchSize = EMBEDDING_LIMITS.MAX_BATCH_SIZE,
       maxRetries = EMBEDDING_LIMITS.MAX_RETRIES,
       retryDelay = EMBEDDING_LIMITS.RETRY_DELAY,
