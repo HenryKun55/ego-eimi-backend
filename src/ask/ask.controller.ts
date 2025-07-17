@@ -1,4 +1,4 @@
-import { Controller, Post, Body, UseGuards, Req } from '@nestjs/common'
+import { Controller, Post, Body, UseGuards, Req, Logger } from '@nestjs/common'
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard'
 import { LlmService } from 'src/llm/llm.service'
 import { SearchService } from 'src/search/search.service'
@@ -11,6 +11,8 @@ type AskRequest = {
 
 @Controller('ask')
 export class AskController {
+  private readonly logger = new Logger(AskController.name)
+
   constructor(
     private readonly searchService: SearchService,
     private readonly llmService: LlmService
@@ -25,6 +27,8 @@ export class AskController {
     const user = req.user
     const question = body.question
 
+    this.logger.log(`Pergunta recebida de ${user.email}: ${question}`)
+
     const chunks = await this.searchService.searchChunks(question, user)
 
     if (!chunks.length) {
@@ -32,9 +36,9 @@ export class AskController {
     }
 
     const context = chunks
-      .map((chunk) => chunk.content)
+      .map((chunk) => chunk.content.trim())
       .join('\n---\n')
-      .slice(0, 12000) // limitar tamanho
+      .slice(0, 12000)
 
     const answer = await this.llmService.askLLM(question, context)
 

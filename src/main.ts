@@ -7,13 +7,13 @@ import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger'
 async function bootstrap() {
   const app = await NestFactory.create(AppModule)
 
-  app.useGlobalPipes(new ValidationPipe())
+  app.useGlobalPipes(new ValidationPipe({ whitelist: true }))
 
   const swaggerConfig = new DocumentBuilder()
     .setTitle('Ego Eimi API')
     .setDescription('API de documentos com embeddings e busca vetorial')
     .setVersion('1.0')
-    .addTag('Documentos')
+    .addBearerAuth()
     .build()
 
   const document = SwaggerModule.createDocument(app, swaggerConfig)

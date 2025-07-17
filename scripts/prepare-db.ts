@@ -1,10 +1,9 @@
 import { Client } from 'pg'
 import { config } from 'dotenv'
-import { database } from '../src/database/config.database'
 
 config()
 
-const DB_NAME = process.env.DB_NAME ?? database
+const DB_NAME = process.env.DB_DATABASE ?? 'ego_eimi'
 
 async function ensureDatabaseExists() {
   const client = new Client({

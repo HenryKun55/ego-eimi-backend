@@ -1,27 +1,30 @@
 import { Module } from '@nestjs/common'
 import { TypeOrmModule } from '@nestjs/typeorm'
-import { database } from './config.database'
 import { Document } from 'src/documents/entities/document.entity'
 import { User } from 'src/users/entities/user.entity'
 import { DataSource } from 'typeorm'
 import { WithLengthColumnType } from 'typeorm/driver/types/ColumnTypes'
 import { DocumentChunk } from 'src/documents-chunk/entities/document-chunk.entity'
+import { ConfigService } from '@nestjs/config'
 
 @Module({
   imports: [
     TypeOrmModule.forRootAsync({
-      useFactory: () => ({
-        type: 'postgres',
-        host: process.env.DB_HOST || 'localhost',
-        port: Number(process.env.DB_PORT) || 5432,
-        username: process.env.DB_USER || 'postgres',
-        password: process.env.DB_PASS || 'postgres',
-        database,
-        entities: [Document, DocumentChunk, User],
-        synchronize: false,
-        migrationsRun: false,
-        logging: true,
-      }),
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => {
+        return {
+          type: 'postgres',
+          host: configService.get<string>('DB_HOST'),
+          port: configService.get<number>('DB_PORT'),
+          username: configService.get<string>('DB_USER'),
+          password: configService.get<string>('DB_PASS'),
+          database: configService.get<string>('DB_DATABASE'),
+          entities: [Document, DocumentChunk, User],
+          synchronize: false,
+          migrationsRun: false,
+          logging: true,
+        }
+      },
       dataSourceFactory: async (options) => {
         const dataSource = new DataSource(options)
         dataSource.driver.supportedDataTypes.push(

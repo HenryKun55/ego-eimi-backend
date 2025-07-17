@@ -16,7 +16,7 @@ export class SearchService {
   constructor(private readonly configService: ConfigService) {
     this.qdrantClient = new QdrantClient({
       url: configService.get<string>('QDRANT_URL'),
-      apiKey: configService.get<string>('QDRANT_API_KEY'),
+      apiKey: configService.get<string>('QDRANT_API_KEY') || undefined,
     })
     this.collectionName =
       configService.get<string>('QDRANT_COLLECTION') || 'document_chunks'
@@ -49,12 +49,16 @@ export class SearchService {
         must: [
           {
             key: 'requiredRole',
-            match: { any: user.roles },
+            match: { value: user.roles },
           },
         ],
       },
     })
 
-    return result.map((point) => point.payload as { content: string })
+    return result.map((point) => ({
+      content: (point.payload as any)?.text || '',
+      metadata: point.payload,
+      score: point.score,
+    }))
   }
 }

@@ -41,12 +41,35 @@ export class DocumentsService {
     return this.documentCreator.execute(createDto)
   }
 
+  async createWithChunksAndEmbedding(
+    createDto: CreateDocumentDto
+  ): Promise<Document> {
+    const document = await this.create(createDto)
+
+    await this.documentsChunkService.chunkAndIndex(
+      createDto.content,
+      document.id.toString(),
+      createDto.chunkingOptions,
+      {
+        metadata: {
+          documentId: document.id,
+          requiredRole: createDto.requiredRole,
+          sourceName: createDto.sourceName,
+          ...(createDto.metadata || {}),
+        },
+        embeddingOptions: undefined,
+        batchSize: createDto.indexingOptions?.batchSize || 50,
+      }
+    )
+
+    return document
+  }
+
   async findAll(userRoles?: string[]): Promise<Document[]> {
     try {
       const queryBuilder =
         this.documentRepository.createQueryBuilder('document')
 
-      // Filtrar por roles se fornecido
       if (userRoles && userRoles.length > 0) {
         queryBuilder.where(
           'document.requiredRole IN (:...roles) OR document.requiredRole = :publicRole',
@@ -70,7 +93,6 @@ export class DocumentsService {
         .createQueryBuilder('document')
         .where('document.id = :id', { id })
 
-      // Verificar permissão de roles
       if (userRoles && userRoles.length > 0) {
         queryBuilder.andWhere(
           'document.requiredRole IN (:...roles) OR document.requiredRole = :publicRole',
@@ -106,15 +128,9 @@ export class DocumentsService {
     this.logger.log(`Removendo documento: ${id}`)
 
     try {
-      // 1. Verificar se documento existe e usuário tem permissão
       await this.findOne(id, userRoles)
-
-      // 2. Remover chunks do Qdrant
       await this.documentsChunkService.removeDocumentChunks(id)
-
-      // 3. Remover documento do banco (cascata remove chunks relacionados)
       await this.documentRepository.delete(id)
-
       this.logger.log(`Documento ${id} removido com sucesso`)
     } catch (error) {
       this.logger.error(`Erro ao remover documento ${id}:`, error)
@@ -131,18 +147,9 @@ export class DocumentsService {
     return this.documentSearch.execute(query, userRoles, limit, score)
   }
 
-  async getDocumentStats(
-    id: string,
-    userRoles?: string[]
-  ): Promise<{
-    document: Document
-    totalChunks: number
-    averageChunkSize: number
-  }> {
+  async getDocumentStats(id: string, userRoles?: string[]) {
     try {
       const document = await this.findOne(id, userRoles)
-
-      // Buscar chunks do documento no banco
       const chunks = await this.documentChunkRepository.find({
         where: { documentId: id },
       })

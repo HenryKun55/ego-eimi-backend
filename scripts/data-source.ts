@@ -1,7 +1,6 @@
 import * as path from 'path'
 import { config } from 'dotenv'
 import { Document } from 'src/documents/entities/document.entity'
-import { database } from 'src/database/config.database'
 import { User } from 'src/users/entities/user.entity'
 import { DataSource } from 'typeorm/data-source/DataSource'
 import { DocumentChunk } from 'src/documents-chunk/entities/document-chunk.entity'
@@ -16,7 +15,7 @@ const AppDataSource = new DataSource({
   port: Number(process.env.DB_PORT ?? 5432),
   username: process.env.DB_USER ?? 'postgres',
   password: process.env.DB_PASSWORD ?? 'postgres',
-  database: process.env.DB_NAME ?? database,
+  database: process.env.DB_DATABASE ?? 'ego_eimi',
   entities: [DocumentChunk, Document, User],
   migrations: [path.join(__dirname, '../src/database/migrations/*.js')],
   synchronize: false,

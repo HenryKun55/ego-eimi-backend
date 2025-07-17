@@ -6,7 +6,7 @@ import { LocalStrategyUserOutput } from '../@types/user'
 
 @Injectable()
 export class LocalStrategy extends PassportStrategy(Strategy) {
-  constructor(private authService: AuthService) {
+  constructor(private readonly authService: AuthService) {
     super({ usernameField: 'email' })
   }
 
@@ -16,7 +16,7 @@ export class LocalStrategy extends PassportStrategy(Strategy) {
   ): Promise<LocalStrategyUserOutput> {
     const user = await this.authService.validateUser(email, password)
     if (!user) {
-      throw new UnauthorizedException('Invalid credentials.')
+      throw new UnauthorizedException()
     }
     return user
   }
