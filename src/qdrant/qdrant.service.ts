@@ -5,7 +5,7 @@ import { QdrantClient } from '@qdrant/js-client-rest'
 export class QdrantService implements OnModuleInit {
   private readonly logger = new Logger(QdrantService.name)
   private readonly client: QdrantClient
-  private readonly collectionName = 'documents'
+  private readonly collectionName = 'document_chunks'
   private readonly vectorSize = 1536
 
   constructor() {

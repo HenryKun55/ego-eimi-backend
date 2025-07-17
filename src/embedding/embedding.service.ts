@@ -4,7 +4,7 @@ import {
   EmbeddingResponseSchema,
   EmbeddingErrorSchema,
   type EmbeddingResponse,
-  GROQ_API,
+  OPEN_API,
   EMBEDDING_MODELS,
   EMBEDDING_LIMITS,
 } from './embedding.schema'
@@ -22,50 +22,69 @@ export class EmbeddingService {
   private readonly apiKey: string
 
   constructor(private readonly configService: ConfigService) {
-    this.apiKey = this.configService.getOrThrow<string>('GROQ_API_KEY')
+    this.apiKey = this.configService.getOrThrow<string>('OPEN_API_KEY')
   }
+
+  // async generateEmbeddings(
+  //   texts: string[],
+  //   options: EmbeddingOptions = {}
+  // ): Promise<number[][]> {
+  //   if (!texts || texts.length === 0) {
+  //     throw new HttpException(
+  //       'Lista de textos não pode estar vazia',
+  //       HttpStatus.BAD_REQUEST
+  //     )
+  //   }
+  //
+  //   const {
+  //     model = EMBEDDING_MODELS.TEXT_EMBEDDING_3_SMALL,
+  //     batchSize = EMBEDDING_LIMITS.MAX_BATCH_SIZE,
+  //     maxRetries = EMBEDDING_LIMITS.MAX_RETRIES,
+  //     retryDelay = EMBEDDING_LIMITS.RETRY_DELAY,
+  //   } = options
+  //
+  //   const batches = this.chunkArray(texts, batchSize)
+  //   const embeddings: number[][] = []
+  //
+  //   for (const [i, batch] of batches.entries()) {
+  //     this.logger.debug(`Processando lote ${i + 1}/${batches.length}`)
+  //     const batchEmbeddings = await this.processBatch(
+  //       batch,
+  //       model,
+  //       maxRetries,
+  //       retryDelay
+  //     )
+  //     embeddings.push(...batchEmbeddings)
+  //   }
+  //
+  //   return embeddings
+  // }
+
+  // async generateSingleEmbedding(
+  //   text: string,
+  //   options?: EmbeddingOptions
+  // ): Promise<number[]> {
+  //   const [embedding] = await this.generateEmbeddings([text], options)
+  //   return embedding
+  // }
 
   async generateEmbeddings(
     texts: string[],
-    options: EmbeddingOptions = {}
+    embeddingOptions?: EmbeddingOptions
   ): Promise<number[][]> {
-    if (!texts || texts.length === 0) {
-      throw new HttpException(
-        'Lista de textos não pode estar vazia',
-        HttpStatus.BAD_REQUEST
-      )
-    }
-
-    const {
-      model = EMBEDDING_MODELS.LLAMA_4,
-      batchSize = EMBEDDING_LIMITS.MAX_BATCH_SIZE,
-      maxRetries = EMBEDDING_LIMITS.MAX_RETRIES,
-      retryDelay = EMBEDDING_LIMITS.RETRY_DELAY,
-    } = options
-
-    const batches = this.chunkArray(texts, batchSize)
-    const embeddings: number[][] = []
-
-    for (const [i, batch] of batches.entries()) {
-      this.logger.debug(`Processando lote ${i + 1}/${batches.length}`)
-      const batchEmbeddings = await this.processBatch(
-        batch,
-        model,
-        maxRetries,
-        retryDelay
-      )
-      embeddings.push(...batchEmbeddings)
-    }
-
-    return embeddings
+    this.logger.warn('⚠️ Usando MOCK de embedding (vetores aleatórios)')
+    return texts.map(() =>
+      Array(1536)
+        .fill(0)
+        .map(() => Math.random())
+    )
   }
 
-  async generateSingleEmbedding(
-    text: string,
-    options?: EmbeddingOptions
-  ): Promise<number[]> {
-    const [embedding] = await this.generateEmbeddings([text], options)
-    return embedding
+  async generateSingleEmbedding(text: string): Promise<number[]> {
+    this.logger.warn('⚠️ Usando MOCK de embedding (vetor aleatório)')
+    return Array(1536)
+      .fill(0)
+      .map(() => Math.random())
   }
 
   async generateEmbeddingsWithMetadata(
@@ -80,7 +99,7 @@ export class EmbeddingService {
     }
 
     const {
-      model = EMBEDDING_MODELS.LLAMA_4,
+      model = EMBEDDING_MODELS.TEXT_EMBEDDING_3_SMALL,
       batchSize = EMBEDDING_LIMITS.MAX_BATCH_SIZE,
       maxRetries = EMBEDDING_LIMITS.MAX_RETRIES,
       retryDelay = EMBEDDING_LIMITS.RETRY_DELAY,
@@ -183,7 +202,7 @@ export class EmbeddingService {
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        return await this.callGroqApi(text, model)
+        return await this.callOpenApi(text, model)
       } catch (error) {
         lastError = error as Error
         this.logger.warn(
@@ -199,11 +218,12 @@ export class EmbeddingService {
     )
   }
 
-  private async callGroqApi(
+  private async callOpenApi(
     text: string,
     model: string
   ): Promise<EmbeddingResponse> {
-    const url = `${GROQ_API.BASE_URL}${GROQ_API.EMBEDDINGS_ENDPOINT}`
+    const url = `${OPEN_API.BASE_URL}${OPEN_API.EMBEDDINGS_ENDPOINT}`
+    console.log(this.apiKey)
 
     const response = await fetch(url, {
       method: 'POST',
@@ -211,7 +231,7 @@ export class EmbeddingService {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${this.apiKey}`,
       },
-      body: JSON.stringify({ input: text, model }),
+      body: JSON.stringify({ inputs: text }),
     })
 
     if (!response.ok) {
@@ -227,7 +247,7 @@ export class EmbeddingService {
       }
 
       throw new HttpException(
-        `Erro na API da Groq: ${errorMessage}`,
+        `Erro na API da OpenAI: ${errorMessage}`,
         this.mapHttpStatusCode(response.status)
       )
     }
@@ -241,7 +261,7 @@ export class EmbeddingService {
         parsed.error.format()
       )
       throw new HttpException(
-        'Resposta inválida da API da Groq',
+        'Resposta inválida da API da OpenAI',
         HttpStatus.INTERNAL_SERVER_ERROR
       )
     }

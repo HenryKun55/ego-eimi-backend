@@ -31,7 +31,7 @@ export type EmbeddingResponse = z.infer<typeof EmbeddingResponseSchema>
 export type EmbeddingError = z.infer<typeof EmbeddingErrorSchema>
 
 export const EMBEDDING_MODELS = {
-  LLAMA_4: 'meta-llama/llama-4-scout-17b-16e-instruct',
+  TEXT_EMBEDDING_3_SMALL: 'nomic-embed-text-v1',
 } as const
 
 export const EMBEDDING_LIMITS = {
@@ -41,9 +41,10 @@ export const EMBEDDING_LIMITS = {
   RETRY_DELAY: 1000,
 } as const
 
-export const GROQ_API = {
+export const OPEN_API = {
   BASE_URL: 'https://api.groq.com/openai/v1',
   EMBEDDINGS_ENDPOINT: '/embeddings',
+  COMPLETIONS_ENDPOINT: '/completions',
 } as const
 
 export type EmbeddingModel = keyof typeof EMBEDDING_MODELS

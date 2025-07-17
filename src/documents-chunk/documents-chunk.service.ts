@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto'
 import { Injectable, Logger, HttpException, HttpStatus } from '@nestjs/common'
 import {
   EmbeddingService,
@@ -124,7 +125,7 @@ export class DocumentsChunkService {
 
       if (chunk.length >= minChunkSize) {
         chunks.push({
-          id: `chunk-${Date.now()}-${chunks.length}`,
+          id: randomUUID(),
           text: chunk.trim(),
           metadata: {},
           startIndex: index,
@@ -170,6 +171,11 @@ export class DocumentsChunkService {
             ...batch[j].metadata,
           },
         }))
+
+        console.log(
+          '➡️ Enviando para Qdrant:',
+          points.map((p) => p.vector.length)
+        )
 
         await this.qdrantService.upsertPoints(points)
         indexedChunks += points.length
