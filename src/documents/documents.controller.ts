@@ -15,7 +15,6 @@ import {
   ValidationPipe,
 } from '@nestjs/common'
 import { DocumentsService } from './documents.service'
-import { CreateDocumentDto, UpdateDocumentDto } from './documents.service'
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard'
 import {
   ApiTags,
@@ -26,6 +25,8 @@ import {
   ApiParam,
 } from '@nestjs/swagger'
 import { User } from 'src/users/entities/user.entity'
+import { CreateDocumentDto } from './dtos/create-document.dto'
+import { UpdateDocumentDto } from './dtos/update-document.dto'
 
 export class CreateDocumentBodyDto {
   sourceName: string

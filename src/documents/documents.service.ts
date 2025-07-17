@@ -4,28 +4,11 @@ import { Repository } from 'typeorm'
 import { Document } from './entities/document.entity'
 import { DocumentChunk } from '../documents-chunk/entities/document-chunk.entity'
 import { DocumentsChunkService } from '../documents-chunk/documents-chunk.service'
-import {
-  ChunkingOptions,
-  IndexingOptions,
-} from '../documents-chunk/documents-chunk.service'
-
-export interface CreateDocumentDto {
-  sourceName: string
-  content: string
-  requiredRole: string
-  metadata?: Record<string, any>
-  chunkingOptions?: ChunkingOptions
-  indexingOptions?: IndexingOptions
-}
-
-export interface UpdateDocumentDto {
-  sourceName?: string
-  content?: string
-  requiredRole?: string
-  metadata?: Record<string, any>
-  chunkingOptions?: ChunkingOptions
-  indexingOptions?: IndexingOptions
-}
+import { DocumentCreatorService } from './document-creator.service'
+import { CreateDocumentDto } from './dtos/create-document.dto'
+import { UpdateDocumentDto } from './dtos/update-document.dto'
+import { DocumentUpdaterService } from './document-updater.service'
+import { DocumentSearchService } from './document-search.service'
 
 export interface DocumentSearchResult {
   id: string | number
@@ -48,72 +31,14 @@ export class DocumentsService {
     private readonly documentRepository: Repository<Document>,
     @InjectRepository(DocumentChunk)
     private readonly documentChunkRepository: Repository<DocumentChunk>,
+    private readonly documentCreator: DocumentCreatorService,
+    private readonly documentUpdater: DocumentUpdaterService,
+    private readonly documentSearch: DocumentSearchService,
     private readonly documentsChunkService: DocumentsChunkService
   ) {}
 
-  async create(createDocumentDto: CreateDocumentDto): Promise<Document> {
-    const {
-      sourceName,
-      content,
-      requiredRole,
-      metadata,
-      chunkingOptions,
-      indexingOptions,
-    } = createDocumentDto
-
-    this.logger.log(`Criando documento: ${sourceName}`)
-
-    // Validações
-    if (!content || content.trim().length === 0) {
-      throw new HttpException(
-        'Conteúdo do documento não pode estar vazio',
-        HttpStatus.BAD_REQUEST
-      )
-    }
-
-    if (!sourceName || sourceName.trim().length === 0) {
-      throw new HttpException(
-        'Nome do documento é obrigatório',
-        HttpStatus.BAD_REQUEST
-      )
-    }
-
-    try {
-      // 1. Criar documento no banco
-      const document = this.documentRepository.create({
-        sourceName,
-        content,
-        requiredRole,
-      })
-
-      const savedDocument = await this.documentRepository.save(document)
-
-      // 2. Processar chunks e indexar no Qdrant
-      const indexingResult = await this.documentsChunkService.chunkAndIndex(
-        content,
-        savedDocument.id,
-        chunkingOptions,
-        {
-          ...indexingOptions,
-          metadata: {
-            documentId: savedDocument.id,
-            sourceName: savedDocument.sourceName,
-            requiredRole: savedDocument.requiredRole,
-            ...metadata,
-          },
-        }
-      )
-
-      this.logger.log(
-        `Documento ${savedDocument.id} criado com sucesso. ` +
-          `Chunks indexados: ${indexingResult.indexedChunks}/${indexingResult.totalChunks}`
-      )
-
-      return savedDocument
-    } catch (error) {
-      this.logger.error('Erro ao criar documento:', error)
-      throw error
-    }
+  async create(createDto: CreateDocumentDto): Promise<Document> {
+    return this.documentCreator.execute(createDto)
   }
 
   async findAll(userRoles?: string[]): Promise<Document[]> {
@@ -172,68 +97,9 @@ export class DocumentsService {
     }
   }
 
-  async update(
-    id: string,
-    updateDocumentDto: UpdateDocumentDto,
-    userRoles?: string[]
-  ): Promise<Document> {
-    const {
-      sourceName,
-      content,
-      requiredRole,
-      metadata,
-      chunkingOptions,
-      indexingOptions,
-    } = updateDocumentDto
-
-    this.logger.log(`Atualizando documento: ${id}`)
-
-    try {
-      // 1. Verificar se documento existe e usuário tem permissão
-      const existingDocument = await this.findOne(id, userRoles)
-
-      // 2. Verificar se houve mudança no conteúdo
-      const contentChanged = content && content !== existingDocument.content
-
-      // 3. Atualizar documento no banco
-      const updateData: Partial<Document> = {}
-      if (sourceName) updateData.sourceName = sourceName
-      if (content) updateData.content = content
-      if (requiredRole) updateData.requiredRole = requiredRole
-
-      if (Object.keys(updateData).length > 0) {
-        await this.documentRepository.update(id, updateData)
-      }
-
-      // 4. Se o conteúdo mudou, reprocessar chunks
-      if (contentChanged) {
-        // Remover chunks antigos
-        await this.documentsChunkService.removeDocumentChunks(id)
-
-        // Criar novos chunks
-        await this.documentsChunkService.chunkAndIndex(
-          content,
-          id,
-          chunkingOptions,
-          {
-            ...indexingOptions,
-            metadata: {
-              documentId: id,
-              sourceName: sourceName || existingDocument.sourceName,
-              requiredRole: requiredRole || existingDocument.requiredRole,
-              ...metadata,
-            },
-          }
-        )
-
-        this.logger.log(`Chunks do documento ${id} reprocessados`)
-      }
-
-      return await this.findOne(id, userRoles)
-    } catch (error) {
-      this.logger.error(`Erro ao atualizar documento ${id}:`, error)
-      throw error
-    }
+  async update(id: string, dto: UpdateDocumentDto, userRoles?: string[]) {
+    const existing = await this.findOne(id, userRoles)
+    return this.documentUpdater.execute(id, dto, existing)
   }
 
   async remove(id: string, userRoles?: string[]): Promise<void> {
@@ -260,67 +126,9 @@ export class DocumentsService {
     query: string,
     userRoles?: string[],
     limit = 10,
-    scoreThreshold = 0.7
-  ): Promise<DocumentSearchResult[]> {
-    if (!query || query.trim().length === 0) {
-      throw new HttpException(
-        'Query de busca não pode estar vazia',
-        HttpStatus.BAD_REQUEST
-      )
-    }
-
-    this.logger.debug(
-      `Buscando documentos para query: "${query.substring(0, 50)}..."`
-    )
-
-    try {
-      // Filtro por roles se fornecido
-      const filter =
-        userRoles && userRoles.length > 0
-          ? {
-              should: [
-                ...userRoles.map((role) => ({
-                  key: 'requiredRole',
-                  match: { value: role },
-                })),
-                { key: 'requiredRole', match: { value: 'public' } },
-              ],
-            }
-          : undefined
-
-      // Buscar chunks similares
-      const chunks = await this.documentsChunkService.searchSimilarChunks(
-        query,
-        limit,
-        scoreThreshold,
-        filter
-      )
-
-      // Mapear resultados com informações do documento
-      const results: DocumentSearchResult[] = []
-
-      for (const chunk of chunks) {
-        const documentInfo = {
-          id: chunk.metadata.documentId as string,
-          sourceName: (chunk.metadata.sourceName as string) || '',
-          requiredRole: (chunk.metadata.requiredRole as string) || '',
-        }
-
-        results.push({
-          id: chunk.id,
-          text: chunk.text as string,
-          metadata: chunk.metadata,
-          score: chunk.score,
-          document: documentInfo,
-        })
-      }
-
-      this.logger.debug(`Retornando ${results.length} resultados de busca`)
-      return results
-    } catch (error) {
-      this.logger.error('Erro na busca de documentos:', error)
-      throw error
-    }
+    score = 0.7
+  ) {
+    return this.documentSearch.execute(query, userRoles, limit, score)
   }
 
   async getDocumentStats(
