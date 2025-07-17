@@ -1,10 +1,10 @@
 import * as path from 'path'
 import { config } from 'dotenv'
 import { Document } from 'src/documents/entities/document.entity'
-import { DocumentChunk } from 'src/documents/entities/document-chunk.entity'
 import { database } from 'src/database/config.database'
 import { User } from 'src/users/entities/user.entity'
 import { DataSource } from 'typeorm/data-source/DataSource'
+import { DocumentChunk } from 'src/documents-chunk/entities/document-chunk.entity'
 
 config()
 

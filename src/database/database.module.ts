@@ -2,10 +2,10 @@ import { Module } from '@nestjs/common'
 import { TypeOrmModule } from '@nestjs/typeorm'
 import { database } from './config.database'
 import { Document } from 'src/documents/entities/document.entity'
-import { DocumentChunk } from 'src/documents/entities/document-chunk.entity'
 import { User } from 'src/users/entities/user.entity'
 import { DataSource } from 'typeorm'
 import { WithLengthColumnType } from 'typeorm/driver/types/ColumnTypes'
+import { DocumentChunk } from 'src/documents-chunk/entities/document-chunk.entity'
 
 @Module({
   imports: [
