@@ -12,10 +12,10 @@ import { DocumentChunk } from 'src/documents-chunk/entities/document-chunk.entit
     TypeOrmModule.forRootAsync({
       useFactory: () => ({
         type: 'postgres',
-        host: 'localhost',
-        port: 5432,
-        username: 'postgres',
-        password: 'postgres',
+        host: process.env.DB_HOST || 'localhost',
+        port: Number(process.env.DB_PORT) || 5432,
+        username: process.env.DB_USER || 'postgres',
+        password: process.env.DB_PASS || 'postgres',
         database,
         entities: [Document, DocumentChunk, User],
         synchronize: false,

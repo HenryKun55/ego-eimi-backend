@@ -8,6 +8,8 @@ import {
 } from '@nestjs/common'
 import { LocalAuthGuard } from './guards/local-auth.guard'
 import { AuthService } from './auth.service'
+import { Request as ExpressRequest } from 'express'
+import { LocalStrategyUserOutput } from './@types/user'
 
 @Controller('auth')
 export class AuthController {
@@ -16,7 +18,9 @@ export class AuthController {
   @UseGuards(LocalAuthGuard)
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  async login(@Request() req) {
+  async login(
+    @Request() req: ExpressRequest & { user: LocalStrategyUserOutput }
+  ) {
     return this.authService.login(req.user)
   }
 }

@@ -1,4 +1,11 @@
-import { IsString, IsOptional, IsInt, Min } from 'class-validator'
+import {
+  IsString,
+  IsOptional,
+  IsInt,
+  Min,
+  IsNumber,
+  Max,
+} from 'class-validator'
 
 export class SearchDto {
   @IsString()
@@ -7,5 +14,11 @@ export class SearchDto {
   @IsOptional()
   @IsInt()
   @Min(1)
-  score_threshold?: number
+  limit?: number
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(1)
+  scoreThreshold?: number
 }

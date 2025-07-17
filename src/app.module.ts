@@ -1,25 +1,33 @@
 import { Module } from '@nestjs/common'
-import { DatabaseModule } from './database/database.module'
-import { DocumentsModule } from './documents/documents.module'
-import { UsersModule } from './users/users.module'
-import { AuthModule } from './auth/auth.module'
 import { ConfigModule } from '@nestjs/config'
-import { QdrantModule } from './qdrant/qdrant.module'
-import { EmbeddingModule } from './embedding/embedding.module'
+
+// Infrastructure
+import { DatabaseModule } from './database/database.module'
+
+// Domain Modules
+import { UsersModule } from './users/users.module'
+import { DocumentsModule } from './documents/documents.module'
 import { DocumentsChunkModule } from './documents-chunk/documents-chunk.module'
+
+// Services
+import { AuthModule } from './auth/auth.module'
+import { EmbeddingModule } from './embedding/embedding.module'
+import { QdrantModule } from './qdrant/qdrant.module'
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     DatabaseModule,
-    DocumentsModule,
+
+    // Domain
     UsersModule,
+    DocumentsModule,
+    DocumentsChunkModule,
+
+    // Services
     AuthModule,
     EmbeddingModule,
     QdrantModule,
-    DocumentsChunkModule,
   ],
-  controllers: [],
-  providers: [],
 })
 export class AppModule {}

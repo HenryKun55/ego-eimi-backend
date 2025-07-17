@@ -9,17 +9,14 @@ export class QdrantService implements OnModuleInit {
   private readonly vectorSize = 1536
 
   constructor() {
-    this.client = new QdrantClient({
-      url: process.env.QDRANT_URL || 'http://localhost:6333',
-    })
+    const url = process.env.QDRANT_URL || 'http://localhost:6333'
+    this.client = new QdrantClient({ url })
   }
 
   async onModuleInit(): Promise<void> {
     try {
-      const collections = await this.client.getCollections()
-      const exists = collections.collections.some(
-        (c) => c.name === this.collectionName
-      )
+      const { collections } = await this.client.getCollections()
+      const exists = collections.some((c) => c.name === this.collectionName)
 
       if (!exists) {
         await this.client.createCollection(this.collectionName, {
@@ -34,31 +31,36 @@ export class QdrantService implements OnModuleInit {
       }
     } catch (error) {
       this.logger.error('Erro ao inicializar o Qdrant:', error)
+      throw error
     }
   }
 
-  getClient() {
+  getClient(): QdrantClient {
     return this.client
   }
 
-  getCollectionName() {
+  getCollectionName(): string {
     return this.collectionName
   }
 
   async upsertPoints(
-    points: { id: number | string; vector: number[]; payload?: any }[]
-  ) {
+    points: {
+      id: number | string
+      vector: number[]
+      payload?: Record<string, any>
+    }[]
+  ): Promise<void> {
     try {
-      return await this.client.upsert(this.collectionName, {
+      await this.client.upsert(this.collectionName, {
         wait: true,
-        points: points.map((point) => ({
-          id: point.id,
-          vector: point.vector,
-          payload: point.payload || {},
+        points: points.map(({ id, vector, payload }) => ({
+          id,
+          vector,
+          payload: payload ?? {},
         })),
       })
     } catch (error) {
-      this.logger.error('Error on upsertPoints: ', error)
+      this.logger.error('Erro ao inserir pontos no Qdrant:', error)
       throw error
     }
   }
@@ -73,26 +75,14 @@ export class QdrantService implements OnModuleInit {
         with_vector: false,
       })
     } catch (error) {
-      this.logger.error('Error on search: ', error)
+      this.logger.error('Erro na busca por similaridade:', error)
       throw error
     }
   }
 
-  async searchSimilar(
-    vector: number[],
-    score_threshold = 5,
-    filter?: Record<string, any>
-  ) {
-    return this.client.search(this.collectionName, {
-      vector,
-      filter,
-      score_threshold,
-    })
-  }
-
   async searchWithFilter(
     vector: number[],
-    filter: any,
+    filter: Record<string, any>,
     limit = 5,
     scoreThreshold = 0.7
   ) {
@@ -106,19 +96,20 @@ export class QdrantService implements OnModuleInit {
         with_vector: false,
       })
     } catch (error) {
-      this.logger.error('Error on searchWithFilter: ', error)
+      this.logger.error('Erro na busca com filtro:', error)
       throw error
     }
   }
 
-  async deletePoints(ids: (number | string)[]) {
+  async deletePoints(ids: (number | string)[]): Promise<void> {
     try {
-      return await this.client.delete(this.collectionName, {
+      await this.client.delete(this.collectionName, {
         wait: true,
         points: ids,
       })
+      this.logger.log(`Removidos ${ids.length} pontos do Qdrant.`)
     } catch (error) {
-      this.logger.error('Error on deletePoints: ', error)
+      this.logger.error('Erro ao deletar pontos do Qdrant:', error)
       throw error
     }
   }

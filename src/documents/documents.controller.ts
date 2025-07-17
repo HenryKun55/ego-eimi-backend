@@ -28,38 +28,6 @@ import { User } from 'src/users/entities/user.entity'
 import { CreateDocumentDto } from './dtos/create-document.dto'
 import { UpdateDocumentDto } from './dtos/update-document.dto'
 
-export class CreateDocumentBodyDto {
-  sourceName: string
-  content: string
-  requiredRole: string
-  metadata?: Record<string, any>
-  chunkingOptions?: {
-    chunkSize?: number
-    chunkOverlap?: number
-    separators?: string[]
-  }
-  indexingOptions?: {
-    batchSize?: number
-    retryAttempts?: number
-  }
-}
-
-export class UpdateDocumentBodyDto {
-  sourceName?: string
-  content?: string
-  requiredRole?: string
-  metadata?: Record<string, any>
-  chunkingOptions?: {
-    chunkSize?: number
-    chunkOverlap?: number
-    separators?: string[]
-  }
-  indexingOptions?: {
-    batchSize?: number
-    retryAttempts?: number
-  }
-}
-
 export class SearchDocumentsQueryDto {
   query: string
   limit?: number
@@ -89,7 +57,7 @@ export class DocumentsController {
     description: 'Não autorizado',
   })
   async create(
-    @Body(ValidationPipe) createDocumentDto: CreateDocumentBodyDto,
+    @Body(ValidationPipe) createDocumentDto: CreateDocumentDto,
     @Request() req: { user: User }
   ) {
     const userRoles = req.user.roles || []
@@ -277,7 +245,7 @@ export class DocumentsController {
   })
   async update(
     @Param('id', ParseUUIDPipe) id: string,
-    @Body(ValidationPipe) updateDocumentDto: UpdateDocumentBodyDto,
+    @Body(ValidationPipe) updateDocumentDto: UpdateDocumentDto,
     @Request() req: { user: User }
   ) {
     const userRoles = req.user.roles || []

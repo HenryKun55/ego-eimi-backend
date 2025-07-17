@@ -4,6 +4,9 @@ import {
   EmbeddingResponseSchema,
   EmbeddingErrorSchema,
   type EmbeddingResponse,
+  GROQ_API,
+  EMBEDDING_MODELS,
+  EMBEDDING_LIMITS,
 } from './embedding.schema'
 
 export interface EmbeddingOptions {
@@ -16,12 +19,7 @@ export interface EmbeddingOptions {
 @Injectable()
 export class EmbeddingService {
   private readonly logger = new Logger(EmbeddingService.name)
-  private readonly groqUrl = 'https://api.groq.com/openai/v1/embeddings'
   private readonly apiKey: string
-  private readonly defaultModel = 'nomic-embed-text-v1'
-  private readonly defaultBatchSize = 100
-  private readonly defaultMaxRetries = 3
-  private readonly defaultRetryDelay = 1000
 
   constructor(private readonly configService: ConfigService) {
     this.apiKey = this.configService.getOrThrow<string>('GROQ_API_KEY')
@@ -39,42 +37,35 @@ export class EmbeddingService {
     }
 
     const {
-      model = this.defaultModel,
-      batchSize = this.defaultBatchSize,
-      maxRetries = this.defaultMaxRetries,
-      retryDelay = this.defaultRetryDelay,
+      model = EMBEDDING_MODELS.NOMIC_EMBED_TEXT_V1,
+      batchSize = EMBEDDING_LIMITS.MAX_BATCH_SIZE,
+      maxRetries = EMBEDDING_LIMITS.MAX_RETRIES,
+      retryDelay = EMBEDDING_LIMITS.RETRY_DELAY,
     } = options
 
-    this.logger.log(`Gerando embeddings para ${texts.length} textos`)
-
+    const batches = this.chunkArray(texts, batchSize)
     const embeddings: number[][] = []
 
-    const batches = this.chunkArray(texts, batchSize)
-
-    for (let i = 0; i < batches.length; i++) {
-      const batch = batches[i]
+    for (const [i, batch] of batches.entries()) {
       this.logger.debug(`Processando lote ${i + 1}/${batches.length}`)
-
       const batchEmbeddings = await this.processBatch(
         batch,
         model,
         maxRetries,
         retryDelay
       )
-
       embeddings.push(...batchEmbeddings)
     }
 
-    this.logger.log(`Embeddings gerados com sucesso: ${embeddings.length}`)
     return embeddings
   }
 
   async generateSingleEmbedding(
     text: string,
-    options: EmbeddingOptions = {}
+    options?: EmbeddingOptions
   ): Promise<number[]> {
-    const embeddings = await this.generateEmbeddings([text], options)
-    return embeddings[0]
+    const [embedding] = await this.generateEmbeddings([text], options)
+    return embedding
   }
 
   async generateEmbeddingsWithMetadata(
@@ -89,34 +80,26 @@ export class EmbeddingService {
     }
 
     const {
-      model = this.defaultModel,
-      batchSize = this.defaultBatchSize,
-      maxRetries = this.defaultMaxRetries,
-      retryDelay = this.defaultRetryDelay,
+      model = EMBEDDING_MODELS.NOMIC_EMBED_TEXT_V1,
+      batchSize = EMBEDDING_LIMITS.MAX_BATCH_SIZE,
+      maxRetries = EMBEDDING_LIMITS.MAX_RETRIES,
+      retryDelay = EMBEDDING_LIMITS.RETRY_DELAY,
     } = options
 
-    this.logger.log(
-      `Gerando embeddings com metadata para ${texts.length} textos`
-    )
-
-    const responses: EmbeddingResponse[] = []
     const batches = this.chunkArray(texts, batchSize)
+    const responses: EmbeddingResponse[] = []
 
-    for (let i = 0; i < batches.length; i++) {
-      const batch = batches[i]
+    for (const [i, batch] of batches.entries()) {
       this.logger.debug(`Processando lote ${i + 1}/${batches.length}`)
-
       const batchResponses = await this.processBatchWithMetadata(
         batch,
         model,
         maxRetries,
         retryDelay
       )
-
       responses.push(...batchResponses)
     }
 
-    this.logger.log(`Embeddings com metadata gerados: ${responses.length}`)
     return responses
   }
 
@@ -129,7 +112,7 @@ export class EmbeddingService {
     const embeddings: number[][] = []
 
     for (const text of texts) {
-      if (!text || text.trim().length === 0) {
+      if (!text.trim()) {
         this.logger.warn('Texto vazio encontrado, pulando...')
         continue
       }
@@ -156,7 +139,7 @@ export class EmbeddingService {
     const responses: EmbeddingResponse[] = []
 
     for (const text of texts) {
-      if (!text || text.trim().length === 0) {
+      if (!text.trim()) {
         this.logger.warn('Texto vazio encontrado, pulando...')
         continue
       }
@@ -186,6 +169,7 @@ export class EmbeddingService {
       maxRetries,
       retryDelay
     )
+
     return response.data[0].embedding
   }
 
@@ -205,10 +189,7 @@ export class EmbeddingService {
         this.logger.warn(
           `Tentativa ${attempt}/${maxRetries} falhou: ${error.message}`
         )
-
-        if (attempt < maxRetries) {
-          await this.sleep(retryDelay * attempt)
-        }
+        if (attempt < maxRetries) await this.sleep(retryDelay * attempt)
       }
     }
 
@@ -222,74 +203,50 @@ export class EmbeddingService {
     text: string,
     model: string
   ): Promise<EmbeddingResponse> {
-    try {
-      const response = await fetch(this.groqUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${this.apiKey}`,
-        },
-        body: JSON.stringify({
-          input: text,
-          model,
-        }),
-      })
+    const url = `${GROQ_API.BASE_URL}${GROQ_API.EMBEDDINGS_ENDPOINT}`
 
-      if (!response.ok) {
-        const errorText = await response.text()
-        let errorMessage = `HTTP ${response.status}: ${response.statusText}`
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${this.apiKey}`,
+      },
+      body: JSON.stringify({ input: text, model }),
+    })
 
-        try {
-          const errorJson = JSON.parse(errorText)
-          const errorParsed = EmbeddingErrorSchema.safeParse(errorJson)
+    if (!response.ok) {
+      const errorText = await response.text()
+      let errorMessage = `HTTP ${response.status}: ${response.statusText}`
 
-          if (errorParsed.success) {
-            errorMessage = errorParsed.data.error.message
-          }
-        } catch (error) {
-          this.logger.error('Error on parse: ', error)
-        }
-
-        throw new HttpException(
-          `Erro na API da Groq: ${errorMessage}`,
-          this.mapHttpStatusCode(response.status)
-        )
+      try {
+        const json = JSON.parse(errorText)
+        const parsed = EmbeddingErrorSchema.safeParse(json)
+        if (parsed.success) errorMessage = parsed.data.error.message
+      } catch (error) {
+        this.logger.error('Erro no parse:', error)
       }
 
-      const json = await response.json()
-      const parsed = EmbeddingResponseSchema.safeParse(json)
-
-      if (!parsed.success) {
-        this.logger.error(
-          'Erro ao validar resposta da API:',
-          parsed.error.format()
-        )
-        throw new HttpException(
-          'Resposta inválida da API da Groq',
-          HttpStatus.INTERNAL_SERVER_ERROR
-        )
-      }
-
-      const embedding = parsed.data.data[0]?.embedding
-      if (!embedding) {
-        throw new HttpException(
-          'Nenhum embedding retornado pela API',
-          HttpStatus.INTERNAL_SERVER_ERROR
-        )
-      }
-
-      return parsed.data
-    } catch (error) {
-      if (error instanceof HttpException) {
-        throw error
-      }
-
-      this.logger.error('Erro inesperado ao chamar API da Groq:', error)
       throw new HttpException(
-        'Erro interno ao gerar embedding',
+        `Erro na API da Groq: ${errorMessage}`,
+        this.mapHttpStatusCode(response.status)
+      )
+    }
+
+    const json = await response.json()
+    const parsed = EmbeddingResponseSchema.safeParse(json)
+
+    if (!parsed.success) {
+      this.logger.error(
+        'Erro ao validar resposta da API:',
+        parsed.error.format()
+      )
+      throw new HttpException(
+        'Resposta inválida da API da Groq',
         HttpStatus.INTERNAL_SERVER_ERROR
       )
     }
+
+    return parsed.data
   }
 
   private chunkArray<T>(array: T[], size: number): T[][] {

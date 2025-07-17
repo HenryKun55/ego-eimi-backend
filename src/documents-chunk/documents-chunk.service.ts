@@ -37,11 +37,6 @@ export interface IndexingResult {
 @Injectable()
 export class DocumentsChunkService {
   private readonly logger = new Logger(DocumentsChunkService.name)
-  private readonly defaultChunkSize = 500
-  private readonly defaultChunkOverlap = 50
-  private readonly defaultMinChunkSize = 100
-  private readonly defaultSeparators = ['\n\n', '\n', '.', '!', '?', ';', ' ']
-  private readonly defaultBatchSize = 50
 
   constructor(
     private readonly embeddingService: EmbeddingService,
@@ -56,14 +51,14 @@ export class DocumentsChunkService {
   ): Promise<IndexingResult> {
     const startTime = Date.now()
 
-    if (!content || content.trim().length === 0) {
+    if (!content?.trim()) {
       throw new HttpException(
         'Conteúdo do documento não pode estar vazio',
         HttpStatus.BAD_REQUEST
       )
     }
 
-    if (!documentId || documentId.trim().length === 0) {
+    if (!documentId?.trim()) {
       throw new HttpException(
         'ID do documento é obrigatório',
         HttpStatus.BAD_REQUEST
@@ -73,122 +68,23 @@ export class DocumentsChunkService {
     this.logger.log(`Iniciando processamento do documento: ${documentId}`)
 
     try {
-      // 1. Dividir o texto em chunks
       const chunks = this.splitTextIntoChunks(content, chunkingOptions)
-      this.logger.debug(`Documento dividido em ${chunks.length} chunks`)
 
-      // 2. Gerar embeddings em lotes
-      const { batchSize = this.defaultBatchSize, embeddingOptions } =
-        indexingOptions
-      const indexingResult = await this.indexChunks(
+      const { batchSize = 50, embeddingOptions, metadata } = indexingOptions
+      const indexing = await this.indexChunks(
         chunks,
         documentId,
         batchSize,
         embeddingOptions,
-        indexingOptions.metadata
-      )
-
-      const processingTime = Date.now() - startTime
-      this.logger.log(
-        `Documento ${documentId} processado em ${processingTime}ms - ` +
-          `${indexingResult.indexedChunks}/${indexingResult.totalChunks} chunks indexados`
+        metadata
       )
 
       return {
-        ...indexingResult,
-        processingTime,
+        ...indexing,
+        processingTime: Date.now() - startTime,
       }
     } catch (error) {
       this.logger.error(`Erro ao processar documento ${documentId}:`, error)
-      throw error
-    }
-  }
-
-  async searchSimilarChunks(
-    query: string,
-    limit = 5,
-    scoreThreshold = 0.7,
-    filter?: Record<string, any>
-  ) {
-    if (!query || query.trim().length === 0) {
-      throw new HttpException(
-        'Query não pode estar vazia',
-        HttpStatus.BAD_REQUEST
-      )
-    }
-
-    this.logger.debug(
-      `Buscando chunks similares para: "${query.substring(0, 50)}..."`
-    )
-
-    try {
-      // Gerar embedding da query
-      const queryEmbedding =
-        await this.embeddingService.generateSingleEmbedding(query)
-
-      // Buscar no Qdrant
-      const searchResults = filter
-        ? await this.qdrantService.searchWithFilter(
-            queryEmbedding,
-            filter,
-            limit,
-            scoreThreshold
-          )
-        : await this.qdrantService.search(queryEmbedding, limit, scoreThreshold)
-
-      this.logger.debug(`Encontrados ${searchResults.length} chunks similares`)
-
-      return searchResults.map((result) => ({
-        id: result.id,
-        text: result.payload?.text || '',
-        metadata: result.payload || {},
-        score: result.score,
-      }))
-    } catch (error) {
-      this.logger.error('Erro ao buscar chunks similares:', error)
-      throw error
-    }
-  }
-
-  async removeDocumentChunks(documentId: string): Promise<number> {
-    if (!documentId || documentId.trim().length === 0) {
-      throw new HttpException(
-        'ID do documento é obrigatório',
-        HttpStatus.BAD_REQUEST
-      )
-    }
-
-    this.logger.log(`Removendo chunks do documento: ${documentId}`)
-
-    try {
-      // Buscar todos os chunks do documento
-      const chunks = await this.qdrantService.searchWithFilter(
-        new Array(1536).fill(0), // Vector dummy para busca
-        { must: [{ key: 'documentId', match: { value: documentId } }] },
-        1000, // Limite alto para pegar todos
-        0 // Threshold baixo para pegar todos
-      )
-
-      if (chunks.length === 0) {
-        this.logger.warn(
-          `Nenhum chunk encontrado para o documento: ${documentId}`
-        )
-        return 0
-      }
-
-      // Remover chunks
-      const chunkIds = chunks.map((chunk) => chunk.id)
-      await this.qdrantService.deletePoints(chunkIds)
-
-      this.logger.log(
-        `Removidos ${chunkIds.length} chunks do documento: ${documentId}`
-      )
-      return chunkIds.length
-    } catch (error) {
-      this.logger.error(
-        `Erro ao remover chunks do documento ${documentId}:`,
-        error
-      )
       throw error
     }
   }
@@ -198,55 +94,45 @@ export class DocumentsChunkService {
     options: ChunkingOptions = {}
   ): DocumentChunk[] {
     const {
-      chunkSize = this.defaultChunkSize,
-      chunkOverlap = this.defaultChunkOverlap,
-      minChunkSize = this.defaultMinChunkSize,
-      separators = this.defaultSeparators,
+      chunkSize = 500,
+      chunkOverlap = 50,
+      minChunkSize = 100,
+      separators = ['\n\n', '\n', '.', '!', '?', ';', ' '],
       preserveFormatting = false,
     } = options
 
-    if (!preserveFormatting) {
-      text = text.replace(/\s+/g, ' ').trim()
-    }
-
+    const cleanText = preserveFormatting
+      ? text
+      : text.replace(/\s+/g, ' ').trim()
     const chunks: DocumentChunk[] = []
-    let currentIndex = 0
+    let index = 0
 
-    while (currentIndex < text.length) {
-      const endIndex = Math.min(currentIndex + chunkSize, text.length)
-      let chunkText = text.substring(currentIndex, endIndex)
+    while (index < cleanText.length) {
+      let end = Math.min(index + chunkSize, cleanText.length)
+      let chunk = cleanText.slice(index, end)
 
-      // Tentar quebrar em separadores naturais
-      if (endIndex < text.length) {
-        let bestBreakPoint = chunkText.length
-
-        for (const separator of separators) {
-          const lastSeparatorIndex = chunkText.lastIndexOf(separator)
-          if (lastSeparatorIndex > minChunkSize) {
-            bestBreakPoint = lastSeparatorIndex + separator.length
+      if (end < cleanText.length) {
+        for (const sep of separators) {
+          const sepIndex = chunk.lastIndexOf(sep)
+          if (sepIndex > minChunkSize) {
+            end = index + sepIndex + sep.length
+            chunk = cleanText.slice(index, end)
             break
           }
         }
-
-        chunkText = chunkText.substring(0, bestBreakPoint).trim()
       }
 
-      // Validar tamanho mínimo
-      if (chunkText.length >= minChunkSize) {
+      if (chunk.length >= minChunkSize) {
         chunks.push({
           id: `chunk-${Date.now()}-${chunks.length}`,
-          text: chunkText,
+          text: chunk.trim(),
           metadata: {},
-          startIndex: currentIndex,
-          endIndex: currentIndex + chunkText.length,
+          startIndex: index,
+          endIndex: end,
         })
       }
 
-      // Avançar com overlap
-      currentIndex += chunkText.length
-      if (currentIndex < text.length) {
-        currentIndex = Math.max(currentIndex - chunkOverlap, currentIndex)
-      }
+      index = Math.max(end - chunkOverlap, index + 1)
     }
 
     return chunks
@@ -262,45 +148,33 @@ export class DocumentsChunkService {
     let indexedChunks = 0
     let failedChunks = 0
 
-    // Processar em lotes
     for (let i = 0; i < chunks.length; i += batchSize) {
       const batch = chunks.slice(i, i + batchSize)
 
       try {
-        const texts = batch.map((chunk) => chunk.text)
         const embeddings = await this.embeddingService.generateEmbeddings(
-          texts,
+          batch.map((c) => c.text),
           embeddingOptions
         )
 
-        const points = embeddings.map((vector, index) => {
-          const chunk = batch[index]
-          return {
-            id: chunk.id,
-            vector,
-            payload: {
-              text: chunk.text,
-              documentId,
-              chunkIndex: i + index,
-              startIndex: chunk.startIndex,
-              endIndex: chunk.endIndex,
-              ...baseMetadata,
-              ...chunk.metadata,
-            },
-          }
-        })
+        const points = embeddings.map((vector, j) => ({
+          id: batch[j].id,
+          vector,
+          payload: {
+            text: batch[j].text,
+            documentId,
+            chunkIndex: i + j,
+            startIndex: batch[j].startIndex,
+            endIndex: batch[j].endIndex,
+            ...baseMetadata,
+            ...batch[j].metadata,
+          },
+        }))
 
         await this.qdrantService.upsertPoints(points)
         indexedChunks += points.length
-
-        this.logger.debug(
-          `Lote ${Math.floor(i / batchSize) + 1} processado: ${points.length} chunks indexados`
-        )
       } catch (error) {
-        this.logger.error(
-          `Erro ao processar lote ${Math.floor(i / batchSize) + 1}:`,
-          error
-        )
+        this.logger.error(`Erro ao indexar lote ${i / batchSize + 1}`, error)
         failedChunks += batch.length
       }
     }
@@ -310,5 +184,60 @@ export class DocumentsChunkService {
       indexedChunks,
       failedChunks,
     }
+  }
+
+  async searchSimilarChunks(
+    query: string,
+    limit = 5,
+    scoreThreshold = 0.7,
+    filter?: Record<string, any>
+  ) {
+    if (!query?.trim()) {
+      throw new HttpException(
+        'Query não pode estar vazia',
+        HttpStatus.BAD_REQUEST
+      )
+    }
+
+    const queryEmbedding =
+      await this.embeddingService.generateSingleEmbedding(query)
+
+    const results = filter
+      ? await this.qdrantService.searchWithFilter(
+          queryEmbedding,
+          filter,
+          limit,
+          scoreThreshold
+        )
+      : await this.qdrantService.search(queryEmbedding, limit, scoreThreshold)
+
+    return results.map((r) => ({
+      id: r.id,
+      text: r.payload?.text || '',
+      metadata: r.payload || {},
+      score: r.score,
+    }))
+  }
+
+  async removeDocumentChunks(documentId: string): Promise<number> {
+    if (!documentId?.trim()) {
+      throw new HttpException(
+        'ID do documento é obrigatório',
+        HttpStatus.BAD_REQUEST
+      )
+    }
+
+    const dummyVector: number[] = new Array(1536).fill(0)
+
+    const results = await this.qdrantService.searchWithFilter(
+      dummyVector,
+      { must: [{ key: 'documentId', match: { value: documentId } }] },
+      1000,
+      0
+    )
+
+    const chunkIds = results.map((r) => r.id)
+    await this.qdrantService.deletePoints(chunkIds)
+    return chunkIds.length
   }
 }
