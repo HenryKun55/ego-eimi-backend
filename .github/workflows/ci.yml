@@ -25,10 +25,28 @@ jobs:
           --health-timeout=5s
           --health-retries=5
 
+      qdrant:
+        image: qdrant/qdrant:v1.9.1
+        ports:
+          - 6333:6333
+        options: >-
+          --health-cmd="curl -f http://localhost:6333/collections || exit 1"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
     env:
       NODE_ENV: test
-      JWT_SECRET: super-secret
-      DATABASE_URL: postgres://postgres:postgres@localhost:5432/teambrain_test
+      JWT_SECRET: dummy-secret
+      OPEN_API_KEY: ${{ secrets.OPEN_API_KEY }}
+      QDRANT_URL: http://localhost:6333
+      QDRANT_COLLECTION: document_chunks
+      DB_HOST: localhost
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASS: postgres
+      DB_DATABASE: ego_eimi
+      USE_EMBEDDING_MOCK: true
 
     steps:
       - name: 📥 Checkout repo
