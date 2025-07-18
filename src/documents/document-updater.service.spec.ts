@@ -5,7 +5,7 @@ import { Document } from './entities/document.entity'
 import { DocumentsChunkService } from '../documents-chunk/documents-chunk.service'
 import { Repository } from 'typeorm'
 import { UpdateDocumentDto } from './dtos/update-document.dto'
-import { InternalServerErrorException } from '@nestjs/common'
+import { Logger } from '@nestjs/common'
 
 describe('DocumentUpdaterService', () => {
   let service: DocumentUpdaterService
@@ -51,6 +51,8 @@ describe('DocumentUpdaterService', () => {
     service = module.get(DocumentUpdaterService)
     repo = module.get(getRepositoryToken(Document))
     chunkService = module.get(DocumentsChunkService)
+
+    jest.spyOn(Logger.prototype, 'error').mockImplementation(() => {})
   })
 
   afterEach(() => {
@@ -109,7 +111,7 @@ describe('DocumentUpdaterService', () => {
     mockRepo.findOneBy.mockResolvedValue(null)
 
     await expect(service.execute('doc-id-1', {}, mockDocument)).rejects.toThrow(
-      'Erro ao recuperar documento atualizado'
+      'Erro ao atualizar documento'
     )
   })
 
@@ -118,6 +120,6 @@ describe('DocumentUpdaterService', () => {
 
     await expect(
       service.execute('doc-id-1', { sourceName: 'x' }, mockDocument)
-    ).rejects.toThrow('fail')
+    ).rejects.toThrow('Erro ao atualizar documento')
   })
 })

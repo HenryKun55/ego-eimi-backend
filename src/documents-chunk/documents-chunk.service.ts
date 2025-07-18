@@ -238,6 +238,9 @@ export class DocumentsChunkService {
     )
 
     const chunkIds = results.map((r) => r.id)
+    if (chunkIds.length === 0) {
+      return 0
+    }
     await this.qdrantService.deletePoints(chunkIds)
     return chunkIds.length
   }
