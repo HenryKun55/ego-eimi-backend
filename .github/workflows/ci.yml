@@ -47,19 +47,21 @@ jobs:
         with:
           bun-version: latest
 
-      - name: 🐳 Start Qdrant service
+      - uses: cpunion/setup-pgvector@main
+        with:
+          postgres-version: '14'
+          postgres-user: 'postgres'
+          postgres-password: 'postgres'
+          postgres-db: 'ego_eimi'
+
+      - name: Test pgvector
+        env:
+          PGPASSWORD: postgres
         run: |
-          docker compose -f docker-compose.yml up -d
-          echo "Aguardando Qdrant subir..."
-          for i in {1..10}; do
-            STATUS=$(curl -s http://localhost:6333/health | jq -r '.status')
-            if [ "$STATUS" == "ok" ]; then
-              echo "✅ Qdrant está pronto"
-              break
-            fi
-            echo "⏳ Aguardando Qdrant... tentativa $i"
-            sleep 3
-          done
+          psql -h localhost -U postgres -d ego_eimi -c 'CREATE EXTENSION vector;'
+
+      - name: 🐳 Start Qdrant service
+        run: docker compose -f docker-compose.yml up -d
 
       - name: 📦 Install dependencies
         run: bun install
