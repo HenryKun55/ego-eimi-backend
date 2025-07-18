@@ -10,31 +10,6 @@ jobs:
   backend-tests:
     runs-on: ubuntu-latest
 
-    services:
-      postgres:
-        image: postgres:14
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: teambrain_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd="pg_isready"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=5
-
-      qdrant:
-        image: qdrant/qdrant:v1.9.1
-        ports:
-          - 6333:6333
-        options: >-
-          --health-cmd="curl -f http://localhost:6333 || exit 1"
-          --health-interval=5s
-          --health-timeout=3s
-          --health-retries=10
-
     env:
       NODE_ENV: test
       JWT_SECRET: dummy-secret
@@ -51,6 +26,18 @@ jobs:
     steps:
       - name: 📥 Checkout repo
         uses: actions/checkout@v3
+
+      - name: 🐳 Start services via docker-compose
+        run: docker-compose -f docker-compose.test.yml up -d
+
+      - name: ⏳ Wait for Qdrant to be healthy
+        run: |
+          echo "Esperando Qdrant..."
+          until curl -s http://localhost:6333/collections | grep -q "collections"; do
+            echo "Ainda não está pronto, aguardando..."
+            sleep 3
+          done
+          echo "Qdrant OK!"
 
       - name: 🔧 Setup Bun
         uses: oven-sh/setup-bun@v1
