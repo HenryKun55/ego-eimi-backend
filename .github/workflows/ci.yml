@@ -64,6 +64,9 @@ jobs:
       - name: 📦 Install dependencies
         run: bun install
 
+      - name: Running seeds and migrations
+        run: bun run prepare:full-clean
+
       - name: 🧪 Run unit tests
         run: bun run test
 
