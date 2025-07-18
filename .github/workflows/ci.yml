@@ -10,6 +10,21 @@ jobs:
   backend-tests:
     runs-on: ubuntu-latest
 
+    services:
+      postgres:
+        image: postgres:14
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: teambrain_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
     env:
       NODE_ENV: test
       JWT_SECRET: dummy-secret
@@ -27,22 +42,24 @@ jobs:
       - name: 📥 Checkout repo
         uses: actions/checkout@v3
 
-      - name: 🐳 Start services via docker-compose
-        run: docker-compose -f docker-compose.test.yml up -d
-
-      - name: ⏳ Wait for Qdrant to be healthy
-        run: |
-          echo "Esperando Qdrant..."
-          until curl -s http://localhost:6333/collections | grep -q "collections"; do
-            echo "Ainda não está pronto, aguardando..."
-            sleep 3
-          done
-          echo "Qdrant OK!"
-
       - name: 🔧 Setup Bun
         uses: oven-sh/setup-bun@v1
         with:
           bun-version: latest
+
+      - name: 🐳 Start Qdrant service
+        run: |
+          docker compose -f docker-compose.test.yml up -d
+          echo "Aguardando Qdrant subir..."
+          for i in {1..10}; do
+            STATUS=$(curl -s http://localhost:6333/health | jq -r '.status')
+            if [ "$STATUS" == "ok" ]; then
+              echo "✅ Qdrant está pronto"
+              break
+            fi
+            echo "⏳ Aguardando Qdrant... tentativa $i"
+            sleep 3
+          done
 
       - name: 📦 Install dependencies
         run: bun install

@@ -1,15 +1,12 @@
 version: '3.8'
-services:
-  postgres:
-    image: postgres:14
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: ego_eimi
-    ports:
-      - 5432:5432
 
+services:
   qdrant:
-    image: qdrant/qdrant:v1.9.1
+    image: qdrant/qdrant:v1.7.1
     ports:
-      - 6333:6333
+      - '6333:6333'
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:6333/health']
+      interval: 10s
+      timeout: 5s
+      retries: 5
