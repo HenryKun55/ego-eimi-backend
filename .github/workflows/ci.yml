@@ -10,20 +10,40 @@ jobs:
   backend-tests:
     runs-on: ubuntu-latest
 
+    services:
+      postgres:
+        image: postgres:14
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: teambrain_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    env:
+      NODE_ENV: test
+      JWT_SECRET: super-secret
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/teambrain_test
+
     steps:
-      - name: Checkout repo
+      - name: 📥 Checkout repo
         uses: actions/checkout@v3
 
-      - name: Setup Bun
+      - name: 🔧 Setup Bun
         uses: oven-sh/setup-bun@v1
         with:
           bun-version: latest
 
-      - name: Install dependencies
+      - name: 📦 Install dependencies
         run: bun install
 
-      - name: Run unit tests
+      - name: 🧪 Run unit tests
         run: bun run test
 
-      - name: Run E2E tests
+      - name: 🧪 Run E2E tests
         run: bun run test:e2e
