@@ -64,7 +64,10 @@ jobs:
       - name: 📦 Install dependencies
         run: bun install
 
-      - name: Running seeds and migrations
+      - name: 🚀 Install Nest CLI globally
+        run: bun add -g @nestjs/cli
+
+      - name: 🌱 unning seeds and migrations
         run: bun run prepare:full-clean
 
       - name: 🧪 Run unit tests
