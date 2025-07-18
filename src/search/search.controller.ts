@@ -1,4 +1,11 @@
-import { Body, Controller, Post, Logger, UseGuards } from '@nestjs/common'
+import {
+  Body,
+  Controller,
+  Post,
+  Logger,
+  UseGuards,
+  BadRequestException,
+} from '@nestjs/common'
 import { SearchDto } from './dtos/search.dto'
 import { EmbeddingService } from 'src/embedding/embedding.service'
 import { QdrantService } from 'src/qdrant/qdrant.service'
@@ -15,12 +22,14 @@ export class SearchController {
   ) {}
 
   @Post()
-  async search(@Body() body: SearchDto) {
+  async search(@Body() body: SearchDto): Promise<{ results: any[] }> {
     const { text, limit = 5, scoreThreshold = 0.7 } = body
 
-    this.logger.log(
-      `Recebida requisição de busca para texto: "${text.slice(0, 30)}..."`
-    )
+    if (!text?.trim()) {
+      throw new BadRequestException('Texto para busca não pode estar vazio.')
+    }
+
+    this.logger.log(`Buscando por texto: "${text.slice(0, 40)}..."`)
 
     const [vector] = await this.embeddingService.generateEmbeddings([text])
     const results = await this.qdrantService.search(
@@ -28,6 +37,8 @@ export class SearchController {
       limit,
       scoreThreshold
     )
+
+    this.logger.log(`Encontrados ${results.length} resultados`)
 
     return { results }
   }

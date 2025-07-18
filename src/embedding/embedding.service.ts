@@ -4,7 +4,7 @@ import {
   EmbeddingResponseSchema,
   EmbeddingErrorSchema,
   type EmbeddingResponse,
-  OPEN_API,
+  EMBEDDING_API,
   EMBEDDING_MODELS,
   EMBEDDING_LIMITS,
 } from './embedding.schema'
@@ -20,77 +20,18 @@ export interface EmbeddingOptions {
 export class EmbeddingService {
   private readonly logger = new Logger(EmbeddingService.name)
   private readonly apiKey: string
+  private readonly useMock: boolean
 
   constructor(private readonly configService: ConfigService) {
     this.apiKey = this.configService.getOrThrow<string>('OPEN_API_KEY')
+    this.useMock =
+      this.configService.get<string>('USE_EMBEDDING_MOCK') === 'true'
   }
-
-  // async generateEmbeddings(
-  //   texts: string[],
-  //   options: EmbeddingOptions = {}
-  // ): Promise<number[][]> {
-  //   if (!texts || texts.length === 0) {
-  //     throw new HttpException(
-  //       'Lista de textos não pode estar vazia',
-  //       HttpStatus.BAD_REQUEST
-  //     )
-  //   }
-  //
-  //   const {
-  //     model = EMBEDDING_MODELS.TEXT_EMBEDDING_3_SMALL,
-  //     batchSize = EMBEDDING_LIMITS.MAX_BATCH_SIZE,
-  //     maxRetries = EMBEDDING_LIMITS.MAX_RETRIES,
-  //     retryDelay = EMBEDDING_LIMITS.RETRY_DELAY,
-  //   } = options
-  //
-  //   const batches = this.chunkArray(texts, batchSize)
-  //   const embeddings: number[][] = []
-  //
-  //   for (const [i, batch] of batches.entries()) {
-  //     this.logger.debug(`Processando lote ${i + 1}/${batches.length}`)
-  //     const batchEmbeddings = await this.processBatch(
-  //       batch,
-  //       model,
-  //       maxRetries,
-  //       retryDelay
-  //     )
-  //     embeddings.push(...batchEmbeddings)
-  //   }
-  //
-  //   return embeddings
-  // }
-
-  // async generateSingleEmbedding(
-  //   text: string,
-  //   options?: EmbeddingOptions
-  // ): Promise<number[]> {
-  //   const [embedding] = await this.generateEmbeddings([text], options)
-  //   return embedding
-  // }
 
   async generateEmbeddings(
     texts: string[],
-    embeddingOptions?: EmbeddingOptions
-  ): Promise<number[][]> {
-    this.logger.warn('⚠️ Usando MOCK de embedding (vetores aleatórios)')
-    return texts.map(() =>
-      Array(1536)
-        .fill(0)
-        .map(() => Math.random())
-    )
-  }
-
-  async generateSingleEmbedding(text: string): Promise<number[]> {
-    this.logger.warn('⚠️ Usando MOCK de embedding (vetor aleatório)')
-    return Array(1536)
-      .fill(0)
-      .map(() => Math.random())
-  }
-
-  async generateEmbeddingsWithMetadata(
-    texts: string[],
     options: EmbeddingOptions = {}
-  ): Promise<EmbeddingResponse[]> {
+  ): Promise<number[][]> {
     if (!texts || texts.length === 0) {
       throw new HttpException(
         'Lista de textos não pode estar vazia',
@@ -98,28 +39,53 @@ export class EmbeddingService {
       )
     }
 
+    if (this.useMock) {
+      this.logger.warn('⚠️ Usando MOCK de embedding (vetores aleatórios)')
+      return texts.map(() =>
+        Array(1536)
+          .fill(0)
+          .map(() => Math.random())
+      )
+    }
+
     const {
-      model = EMBEDDING_MODELS.TEXT_EMBEDDING_3_SMALL,
+      model = EMBEDDING_MODELS.TEXT_EMBEDDING_GROQ,
       batchSize = EMBEDDING_LIMITS.MAX_BATCH_SIZE,
       maxRetries = EMBEDDING_LIMITS.MAX_RETRIES,
       retryDelay = EMBEDDING_LIMITS.RETRY_DELAY,
     } = options
 
     const batches = this.chunkArray(texts, batchSize)
-    const responses: EmbeddingResponse[] = []
+    const embeddings: number[][] = []
 
     for (const [i, batch] of batches.entries()) {
       this.logger.debug(`Processando lote ${i + 1}/${batches.length}`)
-      const batchResponses = await this.processBatchWithMetadata(
+      const batchEmbeddings = await this.processBatch(
         batch,
         model,
         maxRetries,
         retryDelay
       )
-      responses.push(...batchResponses)
+      embeddings.push(...batchEmbeddings)
     }
 
-    return responses
+    return embeddings
+  }
+
+  async generateSingleEmbedding(text: string): Promise<number[]> {
+    if (!text?.trim()) {
+      throw new HttpException('Texto vazio', HttpStatus.BAD_REQUEST)
+    }
+
+    if (this.useMock) {
+      this.logger.warn('⚠️ Usando MOCK de embedding (vetor aleatório)')
+      return Array(1536)
+        .fill(0)
+        .map(() => Math.random())
+    }
+
+    const [embedding] = await this.generateEmbeddings([text])
+    return embedding
   }
 
   private async processBatch(
@@ -147,33 +113,6 @@ export class EmbeddingService {
     }
 
     return embeddings
-  }
-
-  private async processBatchWithMetadata(
-    texts: string[],
-    model: string,
-    maxRetries: number,
-    retryDelay: number
-  ): Promise<EmbeddingResponse[]> {
-    const responses: EmbeddingResponse[] = []
-
-    for (const text of texts) {
-      if (!text.trim()) {
-        this.logger.warn('Texto vazio encontrado, pulando...')
-        continue
-      }
-
-      const response = await this.generateFullResponseWithRetry(
-        text,
-        model,
-        maxRetries,
-        retryDelay
-      )
-
-      responses.push(response)
-    }
-
-    return responses
   }
 
   private async generateSingleEmbeddingWithRetry(
@@ -222,8 +161,7 @@ export class EmbeddingService {
     text: string,
     model: string
   ): Promise<EmbeddingResponse> {
-    const url = `${OPEN_API.BASE_URL}${OPEN_API.EMBEDDINGS_ENDPOINT}`
-    console.log(this.apiKey)
+    const url = `${EMBEDDING_API.BASE_URL}${EMBEDDING_API.EMBEDDINGS_ENDPOINT}`
 
     const response = await fetch(url, {
       method: 'POST',
@@ -231,7 +169,10 @@ export class EmbeddingService {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${this.apiKey}`,
       },
-      body: JSON.stringify({ inputs: text }),
+      body: JSON.stringify({
+        model,
+        input: text,
+      }),
     })
 
     if (!response.ok) {
@@ -247,7 +188,7 @@ export class EmbeddingService {
       }
 
       throw new HttpException(
-        `Erro na API da OpenAI: ${errorMessage}`,
+        `Erro na API de embedding: ${errorMessage}`,
         this.mapHttpStatusCode(response.status)
       )
     }
@@ -261,7 +202,7 @@ export class EmbeddingService {
         parsed.error.format()
       )
       throw new HttpException(
-        'Resposta inválida da API da OpenAI',
+        'Resposta inválida da API de embedding',
         HttpStatus.INTERNAL_SERVER_ERROR
       )
     }

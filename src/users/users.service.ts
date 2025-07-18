@@ -3,7 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm'
 import { Repository } from 'typeorm'
 import { User } from './entities/user.entity'
 import { CreateUserDto } from './dto/create-user.dto'
-import { LocalStrategyUserOutput } from 'src/auth/@types/user'
+import { UserOutput } from 'src/@types/user'
 
 @Injectable()
 export class UsersService {
@@ -12,7 +12,7 @@ export class UsersService {
     private readonly usersRepository: Repository<User>
   ) {}
 
-  async create(createUserDto: CreateUserDto): Promise<LocalStrategyUserOutput> {
+  async create(createUserDto: CreateUserDto): Promise<UserOutput> {
     const existingUser = await this.findByEmail(createUserDto.email)
     if (existingUser) {
       throw new ConflictException('Um usuário com este email já existe.')

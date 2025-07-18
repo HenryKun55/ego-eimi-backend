@@ -1,146 +1,184 @@
-# 🧠 Ego Eimi – TeamBrain Challenge
+# 🧠 Ego Eimi RAG Backend
 
-> Enterprise knowledge engine that answers employee questions from internal documents using RAG and role-based access control.
-
----
-
-## 📌 Overview
-
-TeamBrain é um mecanismo de conhecimento interno que responde perguntas dos colaboradores com base em documentos previamente ingeridos e vetorizados. O sistema usa ACL-aware RAG para garantir que apenas informações permitidas sejam retornadas ao usuário.
+Este é o backend de um sistema RAG (Retrieval-Augmented Generation), que permite fazer perguntas sobre documentos privados de forma segura, contextualizada e rápida. O projeto é parte de um desafio técnico da Ego Eimi e foi cuidadosamente desenvolvido como um MVP funcional, com atenção especial à arquitetura, boas práticas e extensibilidade.
 
 ---
 
-## ⚙️ Tech Stack & Rationale
+## ⚙️ Tecnologias principais
 
-| Tecnologia         | Motivo de escolha                           |
-| ------------------ | ------------------------------------------- |
-| **NestJS**         | Estrutura modular e escalável para backend  |
-| **TypeScript**     | Segurança de tipos e leitura clara          |
-| **Qdrant**         | Vetor DB com filtros por payload (ACL)      |
-| **Groq (LLM)**     | Respostas rápidas com modelos como `llama3` |
-| **JWT Auth**       | Autenticação simples e eficaz               |
-| **Docker Compose** | Setup local fácil com Qdrant e app backend  |
+- **NestJS** com arquitetura modular
+- **Qdrant** para armazenamento vetorial
+- **Groq Cloud (nomic-embed + LLM)** para embeddings e completions
+- **TypeORM + PostgreSQL** para persistência de documentos e usuários
+- **JWT Auth + RBAC (roles)** para segurança e controle de acesso
+- **Zod** para validação de resposta da API
+- **Swagger** para documentação automática
 
 ---
 
-## 🧠 Arquitetura
+## 🧠 Como funciona (fluxo RAG com ACL)
 
 ```
-┌─────────────┐
-│ Auth Module │────────────┐
-└────┬────────┘            ▼
-     │               ┌──────────────┐
-     ▼               │ DocumentSvc  │
-User Login           └────┬─────────┘
-                          ▼
-                     Chunk + Embed
-                          │
-                          ▼
-┌────────────┐      ┌───────────────┐      ┌─────────────┐
-│ AskController│───▶│ SearchService │────▶│ Qdrant DB   │
-└────────────┘      └───────────────┘      └─────────────┘
-     │
-     ▼
-LLMService (Groq API)
-     │
-     ▼
-   Resposta
+┌──────────────┐
+│ Usuário JWT  │
+└──────┬───────┘
+       │ pergunta
+       ▼
+┌──────────────┐
+│ Busca vetorial (Qdrant)
+│ com embeddings filtrados por ACL
+└──────┬───────┘
+       │ chunks relevantes
+       ▼
+┌──────────────┐
+│ LLM (Groq/OpenAI)
+│ responde com base no contexto
+└──────┬───────┘
+       │ resposta
+       ▼
+┌──────────────┐
+│ Retorno final para usuário
+└──────────────┘
 ```
 
 ---
 
-## 🚀 Setup local
+## 🚀 Como rodar localmente
 
-### 1. Pré-requisitos
+```bash
+# 1. Clone o projeto
+git clone https://github.com/seuusuario/ego-eimi-backend.git
+cd ego-eimi-backend
 
-- Node 18+
-- Docker
-- pnpm (ou bun)
+# 2. Instale as dependências
+npm install
 
-### 2. Subir ambiente
+# 3. Copie as variáveis de ambiente
+cp .env.example .env
+```
+
+### 🔐 Variáveis de ambiente
+
+```env
+OPEN_API_KEY=sk-...
+QDRANT_URL=http://localhost:6333
+QDRANT_API_KEY=
+JWT_SECRET=supertoken
+DATABASE_URL=postgres://user:pass@localhost:5432/db
+```
+
+### 🔄 Rodar com docker-compose (Qdrant + PostgreSQL)
 
 ```bash
 docker-compose up -d
-pnpm install
-pnpm start:dev
 ```
 
-### 3. Autenticar
+### 🧪 Rodar localmente
 
-Use a rota `POST /auth/login` com o usuário seedado.
-
----
-
-## 🧪 Testes e Instrumentação
-
-- Estrutura de testes com Jest pronta
-- Foco nos serviços: `embedding.service`, `search.service`
-- Planejado: logging via middleware (usuário, rota e duração)
+```bash
+npm run start:dev
+```
 
 ---
 
-## 🔒 Segurança & Privacidade
+## 📌 Principais endpoints
 
-- JWT com roles por usuário
-- ACL via `requiredRole` nos chunks
-- `.env.example` incluso (sem segredos no repo)
-- Futuros:
-  - Rate limiting
-  - SSO (fora do escopo MVP)
+### 🧾 Documentos
 
----
+```
+POST    /documents          # cria documento com chunks e embeddings
+GET     /documents          # lista documentos permitidos (RBAC)
+GET     /documents/search   # busca semântica ACL-aware
+GET     /documents/:id      # detalhe
+GET     /documents/:id/stats
+PATCH   /documents/:id
+DELETE  /documents/:id
+```
 
-## 🤖 AI / Copilot Usage
+### 💬 LLM + RAG
 
-- Uso do ChatGPT e Copilot para gerar:
-  - `llm.service.ts` com integração Groq
-  - Boilerplate de modules e guards
-  - Refatoração do ciclo de embedding e chunking
+```
+POST    /ask
+```
 
----
+Payload:
 
-## ⚖️ Trade-offs
+```json
+{ "question": "Qual é a política de segurança da empresa?" }
+```
 
-- ❌ Não possui múltiplas fontes ainda (somente upload direto)
-- ❌ Audit logging simplificado (pendente)
-- ✅ Escolhido priorizar o fluxo completo de RAG e ACL
-- ✅ Foco em retorno preciso e rápido ao usuário
+Retorno:
 
----
+```json
+{ "data": { "answer": "A política é..." } }
+```
 
-## 📈 Performance (observações)
+### 🔐 Auth e usuários
 
-- Embeddings Groq: ~200ms
-- Busca vetorial Qdrant: ~20-40ms
-- LLM (Groq): ~600-900ms
-- Resposta completa: ~1.1s
-
----
-
-## 🛣️ Futuro Roadmap
-
-1. 🧾 Multi-source ingestion (Google Drive, Notion, etc)
-2. 🔍 Interface para gerenciamento dos documentos
-3. 📊 Dashboard com métricas de uso por usuário e tempo
-4. ✅ Autolog/Audit por requisição
+```
+POST    /auth/login         # retorna JWT
+POST    /users              # cria novo usuário
+```
 
 ---
 
-## ⏱️ Time log
+## 🧪 Testes
 
-| Área         | Tempo estimado |
-| ------------ | -------------- |
-| Infra        | 2h             |
-| Backend core | 6h             |
-| Embeddings   | 2h             |
-| Auth/ACL     | 1.5h           |
-| RAG/LLM      | 2h             |
-| Docs + video | 1.5h           |
-| **Total**    | **~13h**       |
+Os testes serão implementados no sábado, incluindo:
+
+- [ ] Unitários para services (`documents`, `llm`, `embedding`)
+- [ ] E2E com supertest para `/ask` e `/documents/search`
+- [ ] Mock para Groq e Qdrant
 
 ---
 
-## ✉️ Submissão
+## 📁 Estrutura de pastas
 
-- Vídeo de demonstração: (link Loom/Youtube)
-- Repositório: (link do GitHub)
+```
+src/
+├── auth/              # login com JWT
+├── users/             # criação e busca de usuários
+├── documents/         # serviço principal de documentos
+├── documents-chunk/   # indexação e split dos chunks
+├── embedding/         # integração com Groq Embed
+├── qdrant/            # armazenamento vetorial
+├── llm/               # geração de resposta final (Groq chat)
+├── ask/               # orquestrador do ciclo RAG
+├── search/            # endpoint de debug de embeddings
+└── main.ts
+```
+
+---
+
+## 🧠 Trade-offs e decisões
+
+| Decisão                                  | Justificativa                  |
+| ---------------------------------------- | ------------------------------ |
+| ✅ RAG com Groq e Qdrant                 | Alta performance + baixo custo |
+| ✅ ACL via campo `requiredRole` no chunk | Flexível e simples             |
+| ✅ Indexação por chunk e metadata        | Rápido, filtrável              |
+| ✅ Zod para validar resposta da LLM      | Evita falhas em produção       |
+| ✅ Design modular em services isolados   | Fácil de escalar               |
+
+---
+
+## ⏱ Log de desenvolvimento
+
+- ✅ Estrutura inicial criada com NestJS
+- ✅ Integração com Qdrant e Groq concluída
+- ✅ Upload + indexação de documentos em chunk
+- ✅ MVP do endpoint `/ask` funcional
+- ✅ ACL por role de usuário
+- ✅ Swagger disponível em `/api`
+
+---
+
+## 👤 Autor
+
+Desenvolvido por [Flávio Henrique](https://github.com/seuusuario) como desafio técnico da Ego Eimi.
+
+---
+
+## 📬 Licença
+
+MIT

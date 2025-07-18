@@ -1,6 +1,6 @@
 import { Injectable, Logger, HttpException, HttpStatus } from '@nestjs/common'
 import { DocumentsChunkService } from 'src/documents-chunk/documents-chunk.service'
-import { DocumentSearchResult } from './documents.service'
+import { DocumentSearchResult } from './@types/document-search-result.types'
 
 @Injectable()
 export class DocumentSearchService {
@@ -14,27 +14,18 @@ export class DocumentSearchService {
     limit = 10,
     scoreThreshold = 0.7
   ): Promise<DocumentSearchResult[]> {
-    if (!query || query.trim().length === 0) {
+    if (!query || !query.trim()) {
       throw new HttpException(
         'Query de busca não pode estar vazia',
         HttpStatus.BAD_REQUEST
       )
     }
 
-    const filter =
-      userRoles && userRoles.length > 0
-        ? {
-            should: [
-              ...userRoles.map((role) => ({
-                key: 'requiredRole',
-                match: { value: role },
-              })),
-              { key: 'requiredRole', match: { value: 'public' } },
-            ],
-          }
-        : undefined
+    const filter = this.buildRoleFilter(userRoles)
 
-    this.logger.log(`Buscando documento: ${query}`)
+    this.logger.log(
+      `Buscando documento: "${query}" com filtro: ${JSON.stringify(filter)}`
+    )
 
     const chunks = await this.documentsChunkService.searchSimilarChunks(
       query,
@@ -42,6 +33,8 @@ export class DocumentSearchService {
       scoreThreshold,
       filter
     )
+
+    this.logger.log(`Chunks encontrados: ${chunks.length}`)
 
     return chunks.map((chunk) => ({
       id: chunk.id,
@@ -54,5 +47,19 @@ export class DocumentSearchService {
         requiredRole: chunk.metadata.requiredRole as string,
       },
     }))
+  }
+
+  private buildRoleFilter(userRoles?: string[]) {
+    if (!userRoles?.length) return undefined
+
+    return {
+      should: [
+        ...userRoles.map((role) => ({
+          key: 'requiredRole',
+          match: { value: role },
+        })),
+        { key: 'requiredRole', match: { value: 'public' } },
+      ],
+    }
   }
 }

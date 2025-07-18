@@ -7,9 +7,9 @@ export const EmbeddingDataSchema = z.object({
 })
 
 export const EmbeddingResponseSchema = z.object({
+  object: z.string().optional(),
   data: z.array(EmbeddingDataSchema).min(1),
-  model: z.string(),
-  object: z.string(),
+  model: z.string().optional(),
   usage: z
     .object({
       prompt_tokens: z.number(),
@@ -22,7 +22,8 @@ export const EmbeddingErrorSchema = z.object({
   error: z.object({
     message: z.string(),
     type: z.string(),
-    code: z.string().optional(),
+    code: z.union([z.string(), z.null()]).optional(),
+    param: z.string().optional(),
   }),
 })
 
@@ -31,7 +32,7 @@ export type EmbeddingResponse = z.infer<typeof EmbeddingResponseSchema>
 export type EmbeddingError = z.infer<typeof EmbeddingErrorSchema>
 
 export const EMBEDDING_MODELS = {
-  TEXT_EMBEDDING_3_SMALL: 'nomic-embed-text-v1',
+  TEXT_EMBEDDING_GROQ: 'nomic-embed-text-v1',
 } as const
 
 export const EMBEDDING_LIMITS = {
@@ -41,10 +42,7 @@ export const EMBEDDING_LIMITS = {
   RETRY_DELAY: 1000,
 } as const
 
-export const OPEN_API = {
+export const EMBEDDING_API = {
   BASE_URL: 'https://api.groq.com/openai/v1',
   EMBEDDINGS_ENDPOINT: '/embeddings',
-  COMPLETIONS_ENDPOINT: '/completions',
 } as const
-
-export type EmbeddingModel = keyof typeof EMBEDDING_MODELS

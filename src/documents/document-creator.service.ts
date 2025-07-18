@@ -1,4 +1,8 @@
-import { Injectable, Logger } from '@nestjs/common'
+import {
+  Injectable,
+  Logger,
+  InternalServerErrorException,
+} from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
 import { Repository } from 'typeorm'
 import { Document } from './entities/document.entity'
@@ -27,34 +31,54 @@ export class DocumentCreatorService {
 
     this.logger.log(`Criando documento: ${sourceName}`)
 
-    const document = this.documentRepository.create({
-      sourceName,
-      content,
-      requiredRole,
-    })
+    try {
+      const document = this.documentRepository.create({
+        sourceName,
+        content,
+        requiredRole,
+      })
 
-    const savedDocument = await this.documentRepository.save(document)
+      const savedDocument = await this.documentRepository.save(document)
 
-    const indexingResult = await this.documentsChunkService.chunkAndIndex(
-      content,
-      savedDocument.id,
-      chunkingOptions,
-      {
-        ...indexingOptions,
-        metadata: {
-          documentId: savedDocument.id,
-          sourceName: savedDocument.sourceName,
-          requiredRole: savedDocument.requiredRole,
-          ...metadata,
-        },
+      const indexingResult = await this.documentsChunkService.chunkAndIndex(
+        content,
+        savedDocument.id.toString(),
+        chunkingOptions,
+        {
+          ...indexingOptions,
+          metadata: {
+            documentId: savedDocument.id,
+            sourceName: savedDocument.sourceName,
+            requiredRole: savedDocument.requiredRole,
+            ...(metadata || {}),
+          },
+        }
+      )
+
+      if (
+        !indexingResult ||
+        indexingResult.indexedChunks < indexingResult.totalChunks
+      ) {
+        this.logger.warn(
+          `Indexação incompleta para doc ${savedDocument.id}: ` +
+            `${indexingResult?.indexedChunks}/${indexingResult?.totalChunks}`
+        )
       }
-    )
 
-    this.logger.log(
-      `Documento ${savedDocument.id} criado com sucesso. ` +
-        `Chunks indexados: ${indexingResult.indexedChunks}/${indexingResult.totalChunks}`
-    )
+      this.logger.log(
+        `Documento ${savedDocument.id} criado com sucesso. ` +
+          `Chunks indexados: ${indexingResult.indexedChunks}/${indexingResult.totalChunks}`
+      )
 
-    return savedDocument
+      return savedDocument
+    } catch (error) {
+      this.logger.error(
+        `Erro ao criar e indexar documento: ${sourceName}`,
+        error
+      )
+      throw new InternalServerErrorException(
+        'Erro ao criar documento e indexar conteúdo'
+      )
+    }
   }
 }

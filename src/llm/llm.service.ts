@@ -1,14 +1,32 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common'
+import {
+  Injectable,
+  Logger,
+  HttpException,
+  HttpStatus,
+  InternalServerErrorException,
+  BadGatewayException,
+} from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
-import { OPEN_API } from 'src/embedding/embedding.schema'
+import {
+  LLM_API_URL,
+  COMPLETIONS_ENDPOINT,
+  DEFAULT_LLM_MODEL,
+} from './llm.constants'
 
 @Injectable()
 export class LlmService {
+  private readonly logger = new Logger(LlmService.name)
+
   constructor(private readonly configService: ConfigService) {}
 
   async askLLM(question: string, context: string): Promise<string> {
-    const url = 'https://api.groq.com/openai/v1/chat/completions'
+    const url = `${LLM_API_URL}${COMPLETIONS_ENDPOINT}`
     const apiKey = this.configService.get<string>('OPEN_API_KEY')
+
+    if (!apiKey) {
+      this.logger.error('OPEN_API_KEY não encontrada no ambiente')
+      throw new InternalServerErrorException('API key ausente')
+    }
 
     try {
       const res = await fetch(url, {
@@ -18,7 +36,7 @@ export class LlmService {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'llama3-70b-8192',
+          model: DEFAULT_LLM_MODEL,
           messages: [
             {
               role: 'system',
@@ -37,18 +55,16 @@ export class LlmService {
 
       if (!res.ok) {
         const errorText = await res.text()
-        console.error('[LLM ERRO]', res.status, errorText)
-        throw new HttpException(
-          `Erro da API da LLM: ${res.statusText}`,
-          res.status as HttpStatus
-        )
+        this.logger.error(`Erro da LLM para pergunta: "${question}"`, errorText)
+        throw new BadGatewayException(`Erro da LLM: ${res.statusText}`)
       }
 
       const data = await res.json()
       return data.choices?.[0]?.message?.content ?? 'Erro ao gerar resposta.'
     } catch (error) {
+      this.logger.error(`Erro ao consultar LLM`, error)
       throw new HttpException(
-        'Erro ao gerar resposta: ' + error,
+        'Erro ao gerar resposta via LLM',
         HttpStatus.INTERNAL_SERVER_ERROR
       )
     }

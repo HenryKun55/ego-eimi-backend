@@ -9,7 +9,7 @@ import {
 import { LocalAuthGuard } from './guards/local-auth.guard'
 import { AuthService } from './auth.service'
 import { Request as ExpressRequest } from 'express'
-import { LocalStrategyUserOutput } from './@types/user'
+import { UserOutput } from 'src/@types/user'
 
 @Controller('auth')
 export class AuthController {
@@ -18,9 +18,7 @@ export class AuthController {
   @UseGuards(LocalAuthGuard)
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  async login(
-    @Request() req: ExpressRequest & { user: LocalStrategyUserOutput }
-  ) {
+  async login(@Request() req: ExpressRequest & { user: UserOutput }) {
     return this.authService.login(req.user)
   }
 }

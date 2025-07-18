@@ -9,18 +9,7 @@ import { CreateDocumentDto } from './dtos/create-document.dto'
 import { UpdateDocumentDto } from './dtos/update-document.dto'
 import { DocumentUpdaterService } from './document-updater.service'
 import { DocumentSearchService } from './document-search.service'
-
-export interface DocumentSearchResult {
-  id: string | number
-  text: string
-  metadata: Record<string, any>
-  score: number
-  document: {
-    id: string
-    sourceName: string
-    requiredRole: string
-  }
-}
+import { DocumentSearchResult } from './@types/document-search-result.types'
 
 @Injectable()
 export class DocumentsService {
@@ -46,55 +35,69 @@ export class DocumentsService {
   ): Promise<Document> {
     const document = await this.create(createDto)
 
-    await this.documentsChunkService.chunkAndIndex(
-      createDto.content,
-      document.id.toString(),
-      createDto.chunkingOptions,
-      {
-        metadata: {
-          documentId: document.id,
-          requiredRole: createDto.requiredRole,
-          sourceName: createDto.sourceName,
-          ...(createDto.metadata || {}),
-        },
-        embeddingOptions: undefined,
-        batchSize: createDto.indexingOptions?.batchSize || 50,
-      }
-    )
+    const metadata = {
+      documentId: document.id,
+      requiredRole: createDto.requiredRole,
+      sourceName: createDto.sourceName,
+      ...(createDto.metadata || {}),
+    }
+
+    try {
+      await this.documentsChunkService.chunkAndIndex(
+        createDto.content,
+        document.id.toString(),
+        createDto.chunkingOptions,
+        {
+          metadata,
+          embeddingOptions: undefined,
+          batchSize: createDto.indexingOptions?.batchSize || 50,
+        }
+      )
+    } catch (err) {
+      this.logger.error(
+        `Erro ao indexar chunks para documento ${document.id}:`,
+        err
+      )
+      throw new HttpException(
+        'Erro ao indexar documento',
+        HttpStatus.INTERNAL_SERVER_ERROR
+      )
+    }
 
     return document
   }
 
   async findAll(userRoles?: string[]): Promise<Document[]> {
-    try {
-      const queryBuilder =
-        this.documentRepository.createQueryBuilder('document')
+    if (!userRoles?.length) {
+      this.logger.warn('Requisição sem roles válidas – retornando vazio')
+      return []
+    }
 
-      if (userRoles && userRoles.length > 0) {
-        queryBuilder.where(
+    try {
+      return await this.documentRepository
+        .createQueryBuilder('document')
+        .where(
           'document.requiredRole IN (:...roles) OR document.requiredRole = :publicRole',
           {
             roles: userRoles,
             publicRole: 'public',
           }
         )
-      }
-
-      return await queryBuilder.getMany()
+        .getMany()
     } catch (error) {
-      this.logger.error('Erro ao buscar documentos:', error)
+      this.logger.error('Erro ao buscar documentos', error)
       throw error
     }
   }
 
   async findOne(id: string, userRoles?: string[]): Promise<Document> {
     try {
-      const queryBuilder = this.documentRepository
+      const query = this.documentRepository
         .createQueryBuilder('document')
         .where('document.id = :id', { id })
 
-      if (userRoles && userRoles.length > 0) {
-        queryBuilder.andWhere(
+      if (userRoles?.length) {
+        query.andWhere(
           'document.requiredRole IN (:...roles) OR document.requiredRole = :publicRole',
           {
             roles: userRoles,
@@ -103,7 +106,7 @@ export class DocumentsService {
         )
       }
 
-      const document = await queryBuilder.getOne()
+      const document = await query.getOne()
 
       if (!document) {
         throw new HttpException(
@@ -114,26 +117,38 @@ export class DocumentsService {
 
       return document
     } catch (error) {
-      this.logger.error(`Erro ao buscar documento ${id}:`, error)
+      this.logger.error(`Erro ao buscar documento ${id}`, error)
       throw error
     }
   }
 
-  async update(id: string, dto: UpdateDocumentDto, userRoles?: string[]) {
+  async update(
+    id: string,
+    dto: UpdateDocumentDto,
+    userRoles?: string[]
+  ): Promise<Document> {
     const existing = await this.findOne(id, userRoles)
     return this.documentUpdater.execute(id, dto, existing)
   }
 
   async remove(id: string, userRoles?: string[]): Promise<void> {
-    this.logger.log(`Removendo documento: ${id}`)
+    this.logger.log(`Removendo documento ${id}`)
 
     try {
       await this.findOne(id, userRoles)
       await this.documentsChunkService.removeDocumentChunks(id)
-      await this.documentRepository.delete(id)
+      const result = await this.documentRepository.delete(id)
+
+      if (result.affected === 0) {
+        throw new HttpException(
+          'Nenhum documento removido',
+          HttpStatus.NOT_FOUND
+        )
+      }
+
       this.logger.log(`Documento ${id} removido com sucesso`)
     } catch (error) {
-      this.logger.error(`Erro ao remover documento ${id}:`, error)
+      this.logger.error(`Erro ao remover documento ${id}`, error)
       throw error
     }
   }
@@ -143,31 +158,28 @@ export class DocumentsService {
     userRoles?: string[],
     limit = 10,
     score = 0.7
-  ) {
+  ): Promise<DocumentSearchResult[]> {
     return this.documentSearch.execute(query, userRoles, limit, score)
   }
 
   async getDocumentStats(id: string, userRoles?: string[]) {
     try {
       const document = await this.findOne(id, userRoles)
-      const chunks = await this.documentChunkRepository.find({
-        where: { documentId: id },
-      })
 
-      const totalChunks = chunks.length
-      const averageChunkSize =
-        totalChunks > 0
-          ? chunks.reduce((sum, chunk) => sum + chunk.content.length, 0) /
-            totalChunks
-          : 0
+      const stats = await this.documentChunkRepository
+        .createQueryBuilder('chunk')
+        .select('COUNT(*)', 'total')
+        .addSelect('AVG(LENGTH(chunk.content))', 'average')
+        .where('chunk.documentId = :id', { id })
+        .getRawOne()
 
       return {
         document,
-        totalChunks,
-        averageChunkSize,
+        totalChunks: parseInt(stats.total, 10) || 0,
+        averageChunkSize: parseFloat(stats.average) || 0,
       }
     } catch (error) {
-      this.logger.error(`Erro ao obter estatísticas do documento ${id}:`, error)
+      this.logger.error(`Erro ao obter estatísticas do documento ${id}`, error)
       throw error
     }
   }

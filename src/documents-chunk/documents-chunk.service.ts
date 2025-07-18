@@ -172,11 +172,6 @@ export class DocumentsChunkService {
           },
         }))
 
-        console.log(
-          '➡️ Enviando para Qdrant:',
-          points.map((p) => p.vector.length)
-        )
-
         await this.qdrantService.upsertPoints(points)
         indexedChunks += points.length
       } catch (error) {

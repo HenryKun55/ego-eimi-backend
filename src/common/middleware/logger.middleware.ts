@@ -1,13 +1,13 @@
 import { Injectable, NestMiddleware, Logger } from '@nestjs/common'
 import { Request, Response, NextFunction } from 'express'
-import { LocalStrategyUserOutput } from 'src/auth/@types/user'
+import { UserOutput } from 'src/@types/user'
 
 @Injectable()
 export class LoggerMiddleware implements NestMiddleware {
   private readonly logger = new Logger('HTTP')
 
   use(
-    req: Request & { user: LocalStrategyUserOutput },
+    req: Request & { user: UserOutput },
     res: Response,
     next: NextFunction
   ): void {

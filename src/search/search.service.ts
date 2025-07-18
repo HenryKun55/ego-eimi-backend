@@ -1,60 +1,70 @@
-import { Injectable } from '@nestjs/common'
+import {
+  Injectable,
+  InternalServerErrorException,
+  Logger,
+} from '@nestjs/common'
 import { QdrantClient } from '@qdrant/js-client-rest'
 import { ConfigService } from '@nestjs/config'
 import { LocalStrategyUserOutput } from 'src/auth/@types/user'
-import { EMBEDDING_MODELS, OPEN_API } from 'src/embedding/embedding.schema'
 import { EmbeddingService } from 'src/embedding/embedding.service'
+import { DEFAULT_QDRANT_COLLECTION, QDRANT_LIMIT } from './search.constants'
 
-type User = {
-  id: string
-  role: string
+interface ChunkPayload {
+  text: string
+  documentId: string
+  requiredRole: string
+  [key: string]: any
+}
+
+export interface SearchResultChunk {
+  content: string
+  metadata: ChunkPayload
+  score: number
 }
 
 @Injectable()
 export class SearchService {
   private readonly qdrantClient: QdrantClient
   private readonly collectionName: string
+  private readonly logger = new Logger(SearchService.name)
 
   constructor(
     private readonly configService: ConfigService,
     private readonly embeddingService: EmbeddingService
   ) {
-    this.qdrantClient = new QdrantClient({
-      url: configService.get<string>('QDRANT_URL'),
-      apiKey: configService.get<string>('QDRANT_API_KEY') || undefined,
-    })
-    this.collectionName =
-      configService.get<string>('QDRANT_COLLECTION') || 'document_chunks'
+    const url = this.configService.get<string>('QDRANT_URL')
+    const apiKey = this.configService.get<string>('QDRANT_API_KEY') || undefined
+    const collectionName =
+      this.configService.get<string>('QDRANT_COLLECTION') ||
+      DEFAULT_QDRANT_COLLECTION
+
+    if (!url) {
+      this.logger.error('QDRANT_URL não definida no ambiente')
+      throw new InternalServerErrorException('Qdrant URL não configurada')
+    }
+
+    this.qdrantClient = new QdrantClient({ url, apiKey })
+    this.collectionName = collectionName
   }
 
   async getEmbedding(query: string): Promise<number[]> {
     return this.embeddingService.generateSingleEmbedding(query)
   }
 
-  // async getEmbedding(text: string): Promise<number[]> {
-  //   const url = `${OPEN_API.BASE_URL}${OPEN_API.EMBEDDINGS_ENDPOINT}`
-  //   const res = await fetch(url, {
-  //     method: 'POST',
-  //     headers: {
-  //       Authorization: `Bearer ${this.configService.get<string>('OPEN_API_KEY')}`,
-  //       'Content-Type': 'application/json',
-  //     },
-  //     body: JSON.stringify({
-  //       input: text,
-  //       model: EMBEDDING_MODELS.TEXT_EMBEDDING_3_SMALL,
-  //     }),
-  //   })
-  //
-  //   const data = await res.json()
-  //   return data.data?.[0]?.embedding ?? []
-  // }
-
-  async searchChunks(query: string, user: LocalStrategyUserOutput) {
+  async searchChunks(
+    query: string,
+    user: LocalStrategyUserOutput
+  ): Promise<SearchResultChunk[]> {
     const vector = await this.getEmbedding(query)
+
+    if (!user.roles?.length) {
+      this.logger.warn(`Usuário ${user.email} não possui roles para ACL`)
+      return []
+    }
 
     const result = await this.qdrantClient.search(this.collectionName, {
       vector,
-      limit: 10,
+      limit: QDRANT_LIMIT,
       filter: {
         must: [
           {
@@ -65,10 +75,18 @@ export class SearchService {
       },
     })
 
-    return result.map((point) => ({
-      content: (point.payload as any)?.text || '',
-      metadata: point.payload,
-      score: point.score,
-    }))
+    const chunks = result.map(
+      (point): SearchResultChunk => ({
+        content: (point.payload as ChunkPayload)?.text || '',
+        metadata: point.payload as ChunkPayload,
+        score: point.score,
+      })
+    )
+
+    this.logger.log(
+      `Busca por "${query}" retornou ${chunks.length} chunks para ${user.email}`
+    )
+
+    return chunks
   }
 }
