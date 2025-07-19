@@ -44,6 +44,16 @@ export class SearchService {
     const client = this.qdrantService.getClient()
     const collectionName = this.qdrantService.getCollectionName()
 
+    const hierarchy = ['viewer', 'employee', 'admin']
+    const expandedRoles = user.roles.flatMap((role) => {
+      const index = hierarchy.indexOf(role)
+      return index >= 0 ? hierarchy.slice(0, index + 1) : []
+    })
+
+    this.logger.log(
+      `📚 ACL expandido para ${user.email}: [${expandedRoles.join(', ')}]`
+    )
+
     const result = await client.search(collectionName, {
       vector,
       limit: QDRANT_LIMIT,
@@ -51,7 +61,7 @@ export class SearchService {
         must: [
           {
             key: 'requiredRole',
-            match: { any: user.roles },
+            match: { any: expandedRoles },
           },
         ],
       },
