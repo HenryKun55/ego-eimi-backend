@@ -3,8 +3,8 @@ import { Injectable, Logger, HttpException, HttpStatus } from '@nestjs/common'
 import {
   EmbeddingService,
   EmbeddingOptions,
-} from 'src/embedding/embedding.service'
-import { QdrantService } from 'src/qdrant/qdrant.service'
+} from '../embedding/embedding.service'
+import { QdrantService } from '../qdrant/qdrant.service'
 
 export interface ChunkingOptions {
   chunkSize?: number

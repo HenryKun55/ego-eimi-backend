@@ -1,5 +1,5 @@
 import { Injectable, Logger, HttpException, HttpStatus } from '@nestjs/common'
-import { DocumentsChunkService } from 'src/documents-chunk/documents-chunk.service'
+import { DocumentsChunkService } from '../documents-chunk/documents-chunk.service'
 import { DocumentSearchResult } from './@types/document-search-result.types'
 
 @Injectable()

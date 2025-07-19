@@ -9,7 +9,7 @@ import {
 import { LocalAuthGuard } from './guards/local-auth.guard'
 import { AuthService } from './auth.service'
 import { Request as ExpressRequest } from 'express'
-import { UserOutput } from 'src/@types/user'
+import { UserOutput } from '../@types/user'
 
 @Controller('auth')
 export class AuthController {

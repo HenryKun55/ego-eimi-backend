@@ -5,7 +5,7 @@
   "description": "Nest TypeScript starter repository",
   "license": "MIT",
   "scripts": {
-    "build": "nest build",
+    "build": "bunx nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
     "dev": "nest start --watch",
@@ -18,12 +18,13 @@
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/jest/bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "prepare": "husky",
-    "reset-db": "bunx ts-node ./scripts/reset-db.ts",
-    "prepare-db": "bunx ts-node ./scripts/prepare-db.ts",
-    "migration:run": "bunx typeorm migration:run --dataSource=./dist/scripts/data-source.js",
-    "prepare:full-clean": "bun run build && bun run reset-db && bun run prepare-db && bun run migration:run",
-    "generate-migration": "bun run scripts/generate-migration.ts",
-    "qdrant": "docker-compose up qdrant -d"
+    "reset-db:dev": "bunx ts-node ./src/scripts/reset-db.ts",
+    "prepare-db:dev": "bunx ts-node ./src/scripts/prepare-db.ts",
+    "reset-db": "node dist/scripts/reset-db.js",
+    "prepare-db": "node dist/scripts/prepare-db.js",
+    "migration:run": "NODE_ENV=production node dist/scripts/run-migrations.js",
+    "prepare:full-clean": "bun run build && bun run reset-db && bun run prepare-db && NODE_ENV=production bun run migration:run",
+    "generate-migration": "bun run ./src/scripts/generate-migration.ts"
   },
   "engines": {
     "npm": ">=10.0.0",

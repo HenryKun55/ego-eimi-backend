@@ -1,6 +1,6 @@
 import { Controller, Post } from '@nestjs/common'
-import { DocumentsService } from 'src/documents/documents.service'
-import { UsersService } from 'src/users/users.service'
+import { DocumentsService } from '../documents/documents.service'
+import { UsersService } from '../users/users.service'
 import { Logger } from '@nestjs/common'
 
 @Controller('seed')

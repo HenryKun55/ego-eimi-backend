@@ -1,5 +1,5 @@
-import { DocumentChunk } from 'src/documents-chunk/entities/document-chunk.entity'
 import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm'
+import { DocumentChunk } from '../../documents-chunk/entities/document-chunk.entity'
 
 @Entity('documents')
 export class Document {

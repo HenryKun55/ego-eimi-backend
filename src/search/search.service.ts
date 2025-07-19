@@ -5,8 +5,8 @@ import {
 } from '@nestjs/common'
 import { QdrantClient } from '@qdrant/js-client-rest'
 import { ConfigService } from '@nestjs/config'
-import { LocalStrategyUserOutput } from 'src/auth/@types/user'
-import { EmbeddingService } from 'src/embedding/embedding.service'
+import { LocalStrategyUserOutput } from '../auth/@types/user'
+import { EmbeddingService } from '../embedding/embedding.service'
 import { DEFAULT_QDRANT_COLLECTION, QDRANT_LIMIT } from './search.constants'
 
 interface ChunkPayload {

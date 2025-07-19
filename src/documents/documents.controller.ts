@@ -24,10 +24,10 @@ import {
   ApiQuery,
   ApiParam,
 } from '@nestjs/swagger'
-import { User } from 'src/users/entities/user.entity'
 import { CreateDocumentDto } from './dtos/create-document.dto'
 import { UpdateDocumentDto } from './dtos/update-document.dto'
 import { SearchDocumentsQueryDto } from './dtos/search-document.dto'
+import { User } from '../users/entities/user.entity'
 
 @ApiTags('documents')
 @Controller('documents')

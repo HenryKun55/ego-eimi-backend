@@ -7,9 +7,9 @@ import {
   BadRequestException,
 } from '@nestjs/common'
 import { SearchDto } from './dtos/search.dto'
-import { EmbeddingService } from 'src/embedding/embedding.service'
-import { QdrantService } from 'src/qdrant/qdrant.service'
-import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard'
+import { EmbeddingService } from '../embedding/embedding.service'
+import { QdrantService } from '../qdrant/qdrant.service'
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard'
 
 @UseGuards(JwtAuthGuard)
 @Controller('search')

@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common'
 import { AskController } from './ask.controller'
-import { SearchModule } from 'src/search/search.module'
-import { LlmModule } from 'src/llm/llm.module'
+import { SearchModule } from '../search/search.module'
+import { LlmModule } from '../llm/llm.module'
 
 @Module({
   imports: [SearchModule, LlmModule],

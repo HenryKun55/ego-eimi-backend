@@ -7,7 +7,7 @@ const DB_NAME = process.env.DB_DATABASE ?? 'ego_eimi'
 
 async function dropDatabase() {
   const client = new Client({
-    host: process.env.DB_HOST ?? 'localhost',
+    host: process.env.DB_HOST ?? 'postgres',
     port: Number(process.env.DB_PORT ?? 5432),
     user: process.env.DB_USER ?? 'postgres',
     password: process.env.DB_PASSWORD ?? 'postgres',

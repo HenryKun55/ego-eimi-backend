@@ -8,7 +8,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm'
 import { Repository } from 'typeorm'
 import { Document } from './entities/document.entity'
-import { DocumentsChunkService } from 'src/documents-chunk/documents-chunk.service'
+import { DocumentsChunkService } from '../documents-chunk/documents-chunk.service'
 import { UpdateDocumentDto } from './dtos/update-document.dto'
 
 @Injectable()

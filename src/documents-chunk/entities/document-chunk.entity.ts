@@ -1,4 +1,3 @@
-import { Document } from 'src/documents/entities/document.entity'
 import {
   Column,
   Entity,
@@ -6,6 +5,7 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm'
+import { Document } from '../../documents/entities/document.entity'
 
 @Entity('documents_chunk')
 export class DocumentChunk {
@@ -15,7 +15,7 @@ export class DocumentChunk {
   @Column({ type: 'text' })
   content: string
 
-  //@ts-expect-error typeorm vector mistake
+  // @ts-expect-error pgvector bug
   @Column('vector', { nullable: true })
   embedding: number[]
 

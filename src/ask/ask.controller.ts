@@ -7,11 +7,11 @@ import {
   Logger,
   BadRequestException,
 } from '@nestjs/common'
-import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard'
-import { LlmService } from 'src/llm/llm.service'
-import { SearchService } from 'src/search/search.service'
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard'
+import { LlmService } from '../llm/llm.service'
+import { SearchService } from '../search/search.service'
 import { Request as ExpressRequest } from 'express'
-import { LocalStrategyUserOutput } from 'src/auth/@types/user'
+import { LocalStrategyUserOutput } from '../auth/@types/user'
 import { AskRequestDto } from './dtos/ask.dto'
 
 @Controller('ask')
