@@ -177,4 +177,8 @@ export class DocumentsService {
       throw error
     }
   }
+
+  async findBySourceName(sourceName: string): Promise<Document | null> {
+    return this.documentRepository.findOne({ where: { sourceName } })
+  }
 }

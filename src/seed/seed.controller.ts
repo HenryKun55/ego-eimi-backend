@@ -80,11 +80,14 @@ export class SeedController {
     ]
 
     for (const doc of docs) {
-      try {
+      const existing = await this.documentsService.findBySourceName(
+        doc.sourceName
+      )
+      if (!existing) {
         await this.documentsService.createWithChunksAndEmbedding(doc)
         this.logger.log(`Documento "${doc.sourceName}" criado com sucesso`)
-      } catch (error) {
-        this.logger.error(`Erro ao criar documento "${doc.sourceName}"`, error)
+      } else {
+        this.logger.log(`Documento "${doc.sourceName}" já existe. Ignorando...`)
       }
     }
 

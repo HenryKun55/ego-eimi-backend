@@ -23,6 +23,7 @@ describe('SeedController', () => {
           provide: DocumentsService,
           useValue: {
             createWithChunksAndEmbedding: jest.fn(),
+            findBySourceName: jest.fn(),
           },
         },
       ],
