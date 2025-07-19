@@ -15,23 +15,21 @@ export class QdrantService implements OnModuleInit {
 
   async onModuleInit(): Promise<void> {
     try {
-      const { collections } = await this.client.getCollections()
-      const exists = collections.some((c) => c.name === this.collectionName)
-
-      if (!exists) {
-        await this.client.createCollection(this.collectionName, {
-          vectors: {
-            size: this.vectorSize,
-            distance: 'Cosine',
-          },
-        })
-        this.logger.log(`Coleção '${this.collectionName}' criada com sucesso.`)
+      await this.client.createCollection(this.collectionName, {
+        vectors: {
+          size: 1536,
+          distance: 'Cosine',
+          on_disk: true,
+        },
+      })
+      this.logger.log(`Collection "${this.collectionName}" criada com sucesso.`)
+    } catch (error: any) {
+      if (error.status === 409) {
+        this.logger.warn(`Collection "${this.collectionName}" já existe.`)
       } else {
-        this.logger.log(`Coleção '${this.collectionName}' já existe.`)
+        this.logger.error('Erro ao inicializar o Qdrant:', error)
+        throw error
       }
-    } catch (error) {
-      this.logger.error('Erro ao inicializar o Qdrant:', error)
-      throw error
     }
   }
 
