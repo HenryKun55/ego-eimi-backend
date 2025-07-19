@@ -1,15 +1,21 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common'
 import { QdrantClient } from '@qdrant/js-client-rest'
+import { ConfigService } from '@nestjs/config'
 
 @Injectable()
 export class QdrantService implements OnModuleInit {
   private readonly logger = new Logger(QdrantService.name)
   private readonly client: QdrantClient
-  private readonly collectionName = 'document_chunks'
+  private readonly collectionName: string
 
-  constructor() {
-    const url = process.env.QDRANT_URL || 'http://localhost:6333'
-    this.client = new QdrantClient({ url })
+  constructor(private readonly configService: ConfigService) {
+    const url =
+      this.configService.get<string>('QDRANT_URL') || 'http://localhost:6333'
+    const apiKey = this.configService.get<string>('QDRANT_API_KEY') || undefined
+    this.collectionName =
+      this.configService.get<string>('QDRANT_COLLECTION') || 'document_chunks'
+
+    this.client = new QdrantClient({ url, apiKey })
   }
 
   async onModuleInit(): Promise<void> {
@@ -20,14 +26,47 @@ export class QdrantService implements OnModuleInit {
           distance: 'Cosine',
           on_disk: true,
         },
+        optimizers_config: {
+          default_segment_number: 1,
+        },
       })
       this.logger.log(`Collection "${this.collectionName}" criada com sucesso.`)
     } catch (error: any) {
       if (error.status === 409) {
         this.logger.warn(`Collection "${this.collectionName}" já existe.`)
       } else {
-        this.logger.error('Erro ao inicializar o Qdrant:', error)
+        this.logger.error('Erro ao criar a collection no Qdrant:', error)
         throw error
+      }
+    }
+
+    try {
+      await this.client.createPayloadIndex(this.collectionName, {
+        field_name: 'requiredRole',
+        field_schema: 'keyword',
+      })
+      this.logger.log('Índice "requiredRole" criado com sucesso.')
+    } catch (indexError: any) {
+      if (indexError?.status === 409) {
+        this.logger.warn('Índice "requiredRole" já existe.')
+      } else {
+        this.logger.error('Erro ao criar índice de payload:', indexError)
+        throw indexError
+      }
+    }
+
+    try {
+      await this.client.createPayloadIndex(this.collectionName, {
+        field_name: 'documentId',
+        field_schema: 'uuid',
+      })
+      this.logger.log('Índice "documentId" criado com sucesso.')
+    } catch (indexError: any) {
+      if (indexError?.status === 409) {
+        this.logger.warn('Índice "documentId" já existe.')
+      } else {
+        this.logger.error('Erro ao criar índice "documentId":', indexError)
+        throw indexError
       }
     }
   }

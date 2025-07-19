@@ -1,13 +1,8 @@
-import {
-  Injectable,
-  InternalServerErrorException,
-  Logger,
-} from '@nestjs/common'
-import { QdrantClient } from '@qdrant/js-client-rest'
-import { ConfigService } from '@nestjs/config'
+import { Injectable, Logger } from '@nestjs/common'
 import { LocalStrategyUserOutput } from '../auth/@types/user'
 import { EmbeddingService } from '../embedding/embedding.service'
-import { DEFAULT_QDRANT_COLLECTION, QDRANT_LIMIT } from './search.constants'
+import { QdrantService } from '../qdrant/qdrant.service'
+import { QDRANT_LIMIT } from './search.constants'
 
 interface ChunkPayload {
   text: string
@@ -24,28 +19,12 @@ export interface SearchResultChunk {
 
 @Injectable()
 export class SearchService {
-  private readonly qdrantClient: QdrantClient
-  private readonly collectionName: string
   private readonly logger = new Logger(SearchService.name)
 
   constructor(
-    private readonly configService: ConfigService,
+    private readonly qdrantService: QdrantService,
     private readonly embeddingService: EmbeddingService
-  ) {
-    const url = this.configService.get<string>('QDRANT_URL')
-    const apiKey = this.configService.get<string>('QDRANT_API_KEY') || undefined
-    const collectionName =
-      this.configService.get<string>('QDRANT_COLLECTION') ||
-      DEFAULT_QDRANT_COLLECTION
-
-    if (!url) {
-      this.logger.error('QDRANT_URL não definida no ambiente')
-      throw new InternalServerErrorException('Qdrant URL não configurada')
-    }
-
-    this.qdrantClient = new QdrantClient({ url, apiKey })
-    this.collectionName = collectionName
-  }
+  ) {}
 
   async getEmbedding(query: string): Promise<number[]> {
     return this.embeddingService.generateSingleEmbedding(query)
@@ -62,7 +41,10 @@ export class SearchService {
       return []
     }
 
-    const result = await this.qdrantClient.search(this.collectionName, {
+    const client = this.qdrantService.getClient()
+    const collectionName = this.qdrantService.getCollectionName()
+
+    const result = await client.search(collectionName, {
       vector,
       limit: QDRANT_LIMIT,
       filter: {
@@ -73,6 +55,8 @@ export class SearchService {
           },
         ],
       },
+      with_payload: true,
+      with_vector: false,
     })
 
     const chunks = result.map(

@@ -1,11 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing'
 import { SearchService } from './search.service'
-import { ConfigService } from '@nestjs/config'
-import { QdrantClient } from '@qdrant/js-client-rest'
-import { InternalServerErrorException, Logger } from '@nestjs/common'
+import { QdrantService } from '../qdrant/qdrant.service'
 import { EmbeddingService } from '../embedding/embedding.service'
-
-jest.mock('@qdrant/js-client-rest')
+import { QdrantClient } from '@qdrant/js-client-rest'
 
 describe('SearchService', () => {
   let service: SearchService
@@ -13,25 +10,21 @@ describe('SearchService', () => {
   let qdrantClientMock: jest.Mocked<QdrantClient>
 
   beforeEach(async () => {
-    const mockQdrantInstance = {
+    qdrantClientMock = {
       search: jest.fn(),
-    }
+    } as unknown as jest.Mocked<QdrantClient>
 
-    ;(QdrantClient as jest.Mock).mockImplementation(() => mockQdrantInstance)
+    const qdrantServiceMock = {
+      getClient: () => qdrantClientMock,
+      getCollectionName: () => 'document_chunks',
+    }
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         SearchService,
         {
-          provide: ConfigService,
-          useValue: {
-            get: (key: string) => {
-              if (key === 'QDRANT_URL') return 'http://localhost:6333'
-              if (key === 'QDRANT_API_KEY') return 'dummy-key'
-              if (key === 'QDRANT_COLLECTION') return 'test-collection'
-              return null
-            },
-          },
+          provide: QdrantService,
+          useValue: qdrantServiceMock,
         },
         {
           provide: EmbeddingService,
@@ -46,9 +39,12 @@ describe('SearchService', () => {
 
     service = module.get<SearchService>(SearchService)
     embeddingService = module.get<EmbeddingService>(EmbeddingService)
-    qdrantClientMock = (service as any).qdrantClient
 
-    jest.spyOn(Logger.prototype, 'error').mockImplementation(() => {})
+    jest.spyOn(console, 'warn').mockImplementation(() => {})
+  })
+
+  afterEach(() => {
+    jest.clearAllMocks()
   })
 
   it('should be defined', () => {
@@ -72,7 +68,6 @@ describe('SearchService', () => {
           documentId: '123',
           requiredRole: 'admin',
         },
-        vector: [0.1, 0.2, 0.3],
       },
     ])
 
@@ -102,14 +97,5 @@ describe('SearchService', () => {
 
     const result = await service.searchChunks(query, user as any)
     expect(result).toEqual([])
-  })
-
-  it('should throw if QDRANT_URL is missing', () => {
-    const config = new ConfigService()
-    jest.spyOn(config, 'get').mockReturnValue(null)
-
-    expect(() => {
-      new SearchService(config, embeddingService)
-    }).toThrow(InternalServerErrorException)
   })
 })
