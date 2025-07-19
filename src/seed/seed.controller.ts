@@ -21,6 +21,7 @@ export class SeedController {
         roles: ['employee'],
       },
       { email: 'felipe@empresa.com', password: '123456', roles: ['employee'] },
+      { email: 'viewer@empresa.com', password: '123456', roles: ['viewer'] },
     ]
 
     for (const user of users) {

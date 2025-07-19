@@ -67,7 +67,7 @@ describe('AskController', () => {
     })
   })
 
-  it('should return answer from llmService', async () => {
+  it('should return answer and chunks from llmService', async () => {
     const dto: AskRequestDto = { question: 'Qual o benefício?' }
     const req: any = {
       user: { email: 'user@example.com', roles: ['employee'] },
@@ -96,9 +96,7 @@ describe('AskController', () => {
 
     const answer = 'A empresa oferece vale-alimentação e plano de saúde.'
 
-    jest
-      .spyOn(searchService, 'searchChunks')
-      .mockResolvedValue(Promise.resolve(chunks))
+    jest.spyOn(searchService, 'searchChunks').mockResolvedValue(chunks)
     jest.spyOn(llmService, 'askLLM').mockResolvedValue(answer)
 
     const result = await controller.ask(dto, req)
@@ -110,7 +108,7 @@ describe('AskController', () => {
 
     expect(result).toEqual({
       success: true,
-      data: { answer },
+      data: { answer, chunks },
       message: 'Resposta gerada com sucesso',
     })
   })

@@ -58,7 +58,7 @@ export class AskController {
 
     return {
       success: true,
-      data: { answer },
+      data: { answer, chunks },
       message: 'Resposta gerada com sucesso',
     }
   }

@@ -5,7 +5,9 @@ import { AppModule } from '../src/app.module'
 
 describe('Ask (e2e)', () => {
   let app: INestApplication
-  let accessToken: string
+  let employeeToken: string
+  let adminToken: string
+  let viewerToken: string
 
   beforeAll(async () => {
     const module = await Test.createTestingModule({
@@ -17,25 +19,92 @@ describe('Ask (e2e)', () => {
 
     await request(app.getHttpServer()).post('/seed')
 
-    const loginRes = await request(app.getHttpServer())
+    const employeeLogin = await request(app.getHttpServer())
       .post('/auth/login')
       .send({ email: 'henrique@empresa.com', password: '123456' })
 
-    accessToken = loginRes.body.access_token
+    employeeToken = employeeLogin.body.access_token
+
+    const adminLogin = await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({ email: 'admin@empresa.com', password: '123456' })
+
+    adminToken = adminLogin.body.access_token
+
+    await request(app.getHttpServer())
+      .post('/auth/register')
+      .send({
+        email: 'viewer@empresa.com',
+        password: '123456',
+        roles: ['viewer'],
+      })
+
+    const viewerLogin = await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({ email: 'viewer@empresa.com', password: '123456' })
+
+    viewerToken = viewerLogin.body.access_token
   })
 
-  it('POST /ask - retorna resposta do LLM para pergunta válida', async () => {
+  it('employee deve acessar documento de funcionário', async () => {
     const res = await request(app.getHttpServer())
       .post('/ask')
-      .set('Authorization', `Bearer ${accessToken}`)
+      .set('Authorization', `Bearer ${employeeToken}`)
       .send({ question: 'Quais os benefícios oferecidos pela empresa?' })
       .expect(201)
 
-    expect(res.body).toHaveProperty('success', true)
-    expect(res.body).toHaveProperty('data')
-    expect(res.body.data).toHaveProperty('answer')
-    expect(typeof res.body.data.answer).toBe('string')
-    expect(res.body).toHaveProperty('message', 'Resposta gerada com sucesso')
+    expect(res.body.success).toBe(true)
+    expect(res.body.data.answer.toLowerCase()).toMatch(/benefício|vale|plano/)
+  })
+
+  it('employee NÃO deve receber chunks de documentos de admin', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/ask')
+      .set('Authorization', `Bearer ${employeeToken}`)
+      .send({ question: 'Qual é o lucro da empresa em 2025?' })
+      .expect(201)
+
+    expect(res.body.success).toBe(true)
+    const chunks = res.body.data.chunks as any[]
+
+    const contemAdmin = chunks.some((c) => c.metadata?.requiredRole === 'admin')
+
+    expect(contemAdmin).toBe(false)
+  })
+
+  it('admin deve acessar qualquer documento', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/ask')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ question: 'Qual é o lucro da empresa em 2025?' })
+      .expect(201)
+
+    expect(res.body.success).toBe(true)
+    expect(res.body.data.answer.toLowerCase()).toMatch(/lucro|milh|finance/i)
+  })
+
+  it('viewer deve acessar apenas conteúdo público', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/ask')
+      .set('Authorization', `Bearer ${viewerToken}`)
+      .send({ question: 'Onde vejo o calendário da empresa?' })
+      .expect(201)
+
+    expect(res.body.success).toBe(true)
+    expect(res.body.data.answer.toLowerCase()).toMatch(
+      /calendário|eventos|datas/
+    )
+  })
+
+  it('viewer NÃO deve acessar conteúdo restrito', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/ask')
+      .set('Authorization', `Bearer ${viewerToken}`)
+      .send({ question: 'Quais são os benefícios da empresa?' })
+      .expect(201)
+
+    expect(res.body.success).toBe(true)
+    expect(res.body.data.answer.toLowerCase()).not.toMatch(/vale|plano|home/)
   })
 
   afterAll(async () => {

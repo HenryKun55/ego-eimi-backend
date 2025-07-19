@@ -47,12 +47,12 @@ describe('SeedController', () => {
 
     const result = await controller.seed()
 
-    expect(createUserMock).toHaveBeenCalledTimes(3)
+    expect(createUserMock).toHaveBeenCalledTimes(4)
     expect(createDocMock).toHaveBeenCalledTimes(7)
     expect(result).toEqual({
       message: 'Seed realizado com sucesso',
       documents: 7,
-      users: 3,
+      users: 4,
     })
   })
 })
