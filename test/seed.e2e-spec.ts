@@ -15,14 +15,19 @@ describe('Seed (e2e)', () => {
     await app.init()
   })
 
-  it('POST /seed - deve popular usuários e documentos', async () => {
-    const res = await request(app.getHttpServer())
-      .post('/seed')
-      .expect((res) => {
-        expect([201, 409]).toContain(res.status)
-      })
+  it('POST /seed - deve criar usuários e documentos com sucesso', async () => {
+    const res = await request(app.getHttpServer()).post('/seed').expect(201)
 
-    expect(res.body).toHaveProperty('message')
+    expect(res.body).toEqual(
+      expect.objectContaining({
+        message: 'Seed realizado com sucesso',
+        users: expect.any(Number),
+        documents: expect.any(Number),
+      })
+    )
+
+    expect(res.body.users).toBeGreaterThanOrEqual(3)
+    expect(res.body.documents).toBeGreaterThanOrEqual(6)
   })
 
   afterAll(async () => {

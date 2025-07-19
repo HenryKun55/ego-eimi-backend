@@ -20,11 +20,7 @@ export class SeedController {
         password: '123456',
         roles: ['employee'],
       },
-      {
-        email: 'felipe@empresa.com',
-        password: '123456',
-        roles: ['employee'],
-      },
+      { email: 'felipe@empresa.com', password: '123456', roles: ['employee'] },
     ]
 
     for (const user of users) {
@@ -46,30 +42,56 @@ export class SeedController {
 
     const docs = [
       {
+        sourceName: 'Guia do Funcionário',
+        content: `Este documento ensina como usar o sistema interno, abrir chamados e consultar benefícios. Somente colaboradores devem acessar.`,
+        requiredRole: 'employee',
+      },
+      {
         sourceName: 'Política de Férias',
-        content: `
-Todo funcionário tem direito a 30 dias de férias por ano. 
-O período pode ser dividido em até três partes, sendo uma delas com no mínimo 14 dias consecutivos.`,
+        content: `Todo funcionário tem direito a 30 dias de férias por ano. O período pode ser dividido em até três partes, sendo uma delas com no mínimo 14 dias consecutivos.`,
         requiredRole: 'employee',
       },
       {
         sourceName: 'Benefícios da Empresa',
-        content: `
-A empresa oferece vale-alimentação, plano de saúde e auxílio home office. 
-Esses benefícios são válidos a partir do primeiro mês de contratação.`,
+        content: `A empresa oferece vale-alimentação, plano de saúde e auxílio home office. Esses benefícios são válidos a partir do primeiro mês de contratação.`,
         requiredRole: 'employee',
+      },
+      {
+        sourceName: 'Relatório Financeiro 2025',
+        content: `O lucro líquido projetado para 2025 é de R$ 5,2 milhões. Acesso restrito a administradores.`,
+        requiredRole: 'admin',
+      },
+      {
+        sourceName: 'Plano Estratégico Interno',
+        content: `Contém metas internas e confidenciais da empresa para os próximos 3 anos. Apenas o setor administrativo tem acesso.`,
+        requiredRole: 'admin',
+      },
+      {
+        sourceName: 'Manual de Boas-vindas',
+        content: `Bem-vindo à empresa! Este manual apresenta os valores, a cultura e os primeiros passos para todos os novos integrantes.`,
+        requiredRole: 'viewer',
+      },
+      {
+        sourceName: 'Calendário Institucional',
+        content: `Feriados, eventos e datas comemorativas da empresa estão disponíveis neste calendário. Acesso livre a todos.`,
+        requiredRole: 'viewer',
       },
     ]
 
     for (const doc of docs) {
       try {
         await this.documentsService.createWithChunksAndEmbedding(doc)
+        this.logger.log(`Documento "${doc.sourceName}" criado com sucesso`)
       } catch (error) {
         this.logger.error(`Erro ao criar documento "${doc.sourceName}"`, error)
       }
     }
 
     this.logger.log('Seed realizado com sucesso')
-    return { message: 'Seed realizado com sucesso' }
+    return {
+      message: 'Seed realizado com sucesso',
+      documents: docs.length,
+      users: users.length,
+    }
   }
 }
