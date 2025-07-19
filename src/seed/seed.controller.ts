@@ -1,7 +1,6 @@
-import { Controller, Post } from '@nestjs/common'
+import { Controller, Post, Logger } from '@nestjs/common'
 import { DocumentsService } from '../documents/documents.service'
 import { UsersService } from '../users/users.service'
-import { Logger } from '@nestjs/common'
 
 @Controller('seed')
 export class SeedController {
@@ -21,11 +20,28 @@ export class SeedController {
         password: '123456',
         roles: ['employee'],
       },
-      { email: 'felipe@empresa.com', password: '123456', roles: ['employee'] },
+      {
+        email: 'felipe@empresa.com',
+        password: '123456',
+        roles: ['employee'],
+      },
     ]
 
     for (const user of users) {
-      await this.usersService.create(user)
+      const existing = await this.usersService.findByEmail(user.email)
+      if (!existing) {
+        try {
+          await this.usersService.create(user)
+        } catch (error: any) {
+          if (error.code === '23505') {
+            this.logger.warn(`Usuário ${user.email} já existe. Ignorando...`)
+          } else {
+            throw error
+          }
+        }
+      } else {
+        this.logger.log(`Usuário ${user.email} já existe. Ignorando...`)
+      }
     }
 
     const docs = [
@@ -46,7 +62,11 @@ Esses benefícios são válidos a partir do primeiro mês de contratação.`,
     ]
 
     for (const doc of docs) {
-      await this.documentsService.createWithChunksAndEmbedding(doc)
+      try {
+        await this.documentsService.createWithChunksAndEmbedding(doc)
+      } catch (error) {
+        this.logger.error(`Erro ao criar documento "${doc.sourceName}"`, error)
+      }
     }
 
     this.logger.log('Seed realizado com sucesso')

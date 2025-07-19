@@ -16,6 +16,7 @@ describe('SeedController', () => {
           provide: UsersService,
           useValue: {
             create: jest.fn(),
+            findByEmail: jest.fn().mockResolvedValue(null),
           },
         },
         {
