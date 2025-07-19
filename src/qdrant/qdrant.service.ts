@@ -6,7 +6,6 @@ export class QdrantService implements OnModuleInit {
   private readonly logger = new Logger(QdrantService.name)
   private readonly client: QdrantClient
   private readonly collectionName = 'document_chunks'
-  private readonly vectorSize = 1536
 
   constructor() {
     const url = process.env.QDRANT_URL || 'http://localhost:6333'

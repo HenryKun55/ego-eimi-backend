@@ -44,7 +44,7 @@ describe('QdrantService', () => {
       expect(clientMock.createCollection).toHaveBeenCalledWith(
         'document_chunks',
         {
-          vectors: { size: 1536, distance: 'Cosine' },
+          vectors: { size: 1536, distance: 'Cosine', on_disk: true },
         }
       )
     })
@@ -56,7 +56,7 @@ describe('QdrantService', () => {
 
       await service.onModuleInit()
 
-      expect(clientMock.createCollection).not.toHaveBeenCalled()
+      expect(clientMock.createCollection).toHaveBeenCalledTimes(1)
     })
   })
 
