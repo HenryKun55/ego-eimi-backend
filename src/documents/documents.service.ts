@@ -76,13 +76,10 @@ export class DocumentsService {
     try {
       return await this.documentRepository
         .createQueryBuilder('document')
-        .where(
-          'document.requiredRole IN (:...roles) OR document.requiredRole = :publicRole',
-          {
-            roles: userRoles,
-            publicRole: 'public',
-          }
-        )
+        .where('document.requiredRole IN (:...roles)', {
+          roles: userRoles,
+        })
+        .orderBy('"document"."createdAt"', 'DESC')
         .getMany()
     } catch (error) {
       this.logger.error('Erro ao buscar documentos', error)
@@ -97,13 +94,9 @@ export class DocumentsService {
         .where('document.id = :id', { id })
 
       if (userRoles?.length) {
-        query.andWhere(
-          'document.requiredRole IN (:...roles) OR document.requiredRole = :publicRole',
-          {
-            roles: userRoles,
-            publicRole: 'public',
-          }
-        )
+        query.andWhere('document.requiredRole IN (:...roles)', {
+          roles: userRoles,
+        })
       }
 
       const document = await query.getOne()
@@ -159,6 +152,7 @@ export class DocumentsService {
     limit = 10,
     score = 0.7
   ): Promise<DocumentSearchResult[]> {
+    if (!userRoles?.length) return []
     return this.documentSearch.execute(query, userRoles, limit, score)
   }
 

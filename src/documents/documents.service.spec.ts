@@ -16,12 +16,11 @@ describe('DocumentsService', () => {
   let updaterService: DocumentUpdaterService
   let chunkService: DocumentsChunkService
   let searchService: DocumentSearchService
-  let documentRepo: Repository<Document>
-  let chunkRepo: Repository<DocumentChunk>
+  let documentRepo: jest.Mocked<Repository<Document>>
+  let chunkRepo: jest.Mocked<Repository<DocumentChunk>>
 
   const mockDocument = {
     id: 'doc-id-1',
-    title: 'Test',
     content: 'Lorem ipsum',
     requiredRole: 'user',
     sourceName: 'source-1',
@@ -34,6 +33,7 @@ describe('DocumentsService', () => {
   const queryBuilder: any = {
     where: jest.fn().mockReturnThis(),
     andWhere: jest.fn().mockReturnThis(),
+    orderBy: jest.fn().mockReturnThis(),
     getMany: jest.fn(),
     getOne: jest.fn(),
     select: jest.fn().mockReturnThis(),
@@ -98,14 +98,14 @@ describe('DocumentsService', () => {
   describe('create', () => {
     it('should call creatorService.execute', async () => {
       jest.spyOn(creatorService, 'execute').mockResolvedValue(mockDocument)
-      const result = await service.create({ ...mockDocument })
+      const result = await service.create(mockDocument as any)
       expect(result).toEqual(mockDocument)
     })
   })
 
   describe('createWithChunksAndEmbedding', () => {
     it('should create document and index chunks', async () => {
-      jest.spyOn(service, 'create').mockResolvedValue(mockDocument)
+      jest.spyOn(creatorService, 'execute').mockResolvedValue(mockDocument)
       jest.spyOn(chunkService, 'chunkAndIndex').mockResolvedValue({
         failedChunks: 0,
         indexedChunks: 1,
@@ -124,10 +124,10 @@ describe('DocumentsService', () => {
     })
 
     it('should throw error if chunking fails', async () => {
-      jest.spyOn(service, 'create').mockResolvedValue(mockDocument)
+      jest.spyOn(creatorService, 'execute').mockResolvedValue(mockDocument)
       jest
         .spyOn(chunkService, 'chunkAndIndex')
-        .mockRejectedValue(new Error('chunking fail'))
+        .mockRejectedValue(new Error('fail'))
 
       await expect(
         service.createWithChunksAndEmbedding({
@@ -172,14 +172,13 @@ describe('DocumentsService', () => {
       jest.spyOn(service, 'findOne').mockResolvedValue(mockDocument)
       jest
         .spyOn(updaterService, 'execute')
-        .mockResolvedValue({ ...mockDocument, content: 'Mussum Ipsum' })
+        .mockResolvedValue({ ...mockDocument, content: 'updated' })
 
-      const result = await service.update(
-        'doc-id-1',
-        { content: 'Mussum Ipsum' },
-        ['user']
-      )
-      expect(result.content).toBe('Mussum Ipsum')
+      const result = await service.update('doc-id-1', { content: 'updated' }, [
+        'user',
+      ])
+
+      expect(result.content).toBe('updated')
     })
   })
 
@@ -195,21 +194,21 @@ describe('DocumentsService', () => {
       expect(chunkService.removeDocumentChunks).toHaveBeenCalledWith('doc-id-1')
     })
 
-    it('should throw if document not found for deletion', async () => {
+    it('should throw if not deleted', async () => {
       jest.spyOn(service, 'findOne').mockResolvedValue(mockDocument)
       jest
         .spyOn(documentRepo, 'delete')
         .mockResolvedValue({ affected: 0 } as any)
 
-      await expect(service.remove('doc-id-1', ['user'])).rejects.toThrowError(
+      await expect(service.remove('doc-id-1', ['user'])).rejects.toThrow(
         'Nenhum documento removido'
       )
     })
   })
 
   describe('searchDocuments', () => {
-    it('should delegate to searchService', async () => {
-      const fakeResult = [{ document: mockDocument, score: 1.0 }]
+    it('should call searchService.execute', async () => {
+      const fakeResult = [{ document: mockDocument, score: 1 }]
       jest.spyOn(searchService, 'execute').mockResolvedValue(fakeResult as any)
 
       const result = await service.searchDocuments('query', ['user'])
@@ -220,14 +219,14 @@ describe('DocumentsService', () => {
   })
 
   describe('getDocumentStats', () => {
-    it('should return stats for document', async () => {
+    it('should return chunk stats', async () => {
       jest.spyOn(service, 'findOne').mockResolvedValue(mockDocument)
-      queryBuilder.getRawOne.mockResolvedValue({ total: '2', average: '123.5' })
+      queryBuilder.getRawOne.mockResolvedValue({ total: '2', average: '100' })
 
       const result = await service.getDocumentStats('doc-id-1', ['user'])
 
       expect(result.totalChunks).toBe(2)
-      expect(result.averageChunkSize).toBe(123.5)
+      expect(result.averageChunkSize).toBe(100)
     })
   })
 })

@@ -51,7 +51,13 @@ describe('DocumentsController', () => {
       content: 'Content',
       requiredRole: 'admin',
     }
-    const mockDoc = { id: 'uuid', chunks: [], ...dto }
+    const mockDoc = {
+      id: 'uuid',
+      chunks: [],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      ...dto,
+    }
 
     jest.spyOn(documentsService, 'create').mockResolvedValue(mockDoc)
 
@@ -71,6 +77,8 @@ describe('DocumentsController', () => {
         content: 'content',
         requiredRole: 'role',
         chunks: [],
+        createdAt: new Date(),
+        updatedAt: new Date(),
       },
       {
         id: '2',
@@ -78,6 +86,8 @@ describe('DocumentsController', () => {
         content: 'content',
         requiredRole: 'role',
         chunks: [],
+        createdAt: new Date(),
+        updatedAt: new Date(),
       },
     ]
     jest.spyOn(documentsService, 'findAll').mockResolvedValue(docs)
@@ -131,6 +141,8 @@ describe('DocumentsController', () => {
       content: 'content',
       requiredRole: 'admin',
       chunks: [],
+      createdAt: new Date(),
+      updatedAt: new Date(),
     }
     jest.spyOn(documentsService, 'findOne').mockResolvedValue(mockDoc)
 
@@ -151,6 +163,8 @@ describe('DocumentsController', () => {
         requiredRole: 'admin',
         content: 'content',
         chunks: [],
+        createdAt: new Date(),
+        updatedAt: new Date(),
       },
       totalChunks: 2,
       averageChunkSize: 2,
@@ -173,6 +187,8 @@ describe('DocumentsController', () => {
       sourceName: 'source-name',
       requiredRole: 'admin',
       content: 'content',
+      createdAt: new Date(),
+      updatedAt: new Date(),
     }
 
     jest.spyOn(documentsService, 'update').mockResolvedValue(updated)

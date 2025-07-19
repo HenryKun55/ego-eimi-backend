@@ -19,6 +19,8 @@ describe('DocumentUpdaterService', () => {
     sourceName: 'source-1',
     metadata: { key: 'value' },
     chunks: [],
+    createdAt: new Date(),
+    updatedAt: new Date(),
   } as Document
 
   const updatedDocument = { ...mockDocument, content: 'New content' }

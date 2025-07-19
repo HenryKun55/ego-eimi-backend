@@ -28,6 +28,8 @@ describe('DocumentCreatorService', () => {
     requiredRole: mockDto.requiredRole,
     sourceName: mockDto.sourceName,
     chunks: [],
+    createdAt: new Date(),
+    updatedAt: new Date(),
   }
 
   beforeEach(async () => {

@@ -30,7 +30,6 @@ export class DocumentUpdaterService {
       sourceName,
       content,
       requiredRole,
-      metadata,
       chunkingOptions,
       indexingOptions,
     } = dto

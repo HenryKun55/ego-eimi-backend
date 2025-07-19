@@ -59,18 +59,21 @@ export class SearchService {
       with_vector: false,
     })
 
-    const chunks = result.map(
-      (point): SearchResultChunk => ({
-        content: (point.payload as ChunkPayload)?.text || '',
-        metadata: point.payload as ChunkPayload,
-        score: point.score,
-      })
+    const rawChunks: SearchResultChunk[] = result.map((point) => ({
+      content: (point.payload as ChunkPayload)?.text || '',
+      metadata: point.payload as ChunkPayload,
+      score: point.score,
+    }))
+
+    const uniqueChunks = rawChunks.filter(
+      (chunk, index, self) =>
+        index === self.findIndex((c) => c.content === chunk.content)
     )
 
     this.logger.log(
-      `Busca por "${query}" retornou ${chunks.length} chunks para ${user.email}`
+      `Busca por "${query}" retornou ${uniqueChunks.length} chunks únicos para ${user.email}`
     )
 
-    return chunks
+    return uniqueChunks
   }
 }

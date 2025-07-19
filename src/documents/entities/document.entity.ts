@@ -1,4 +1,11 @@
-import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm'
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  OneToMany,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
+} from 'typeorm'
 import { DocumentChunk } from '../../documents-chunk/entities/document-chunk.entity'
 
 @Entity('documents')
@@ -14,6 +21,12 @@ export class Document {
 
   @Column()
   requiredRole: string
+
+  @CreateDateColumn()
+  createdAt: Date
+
+  @UpdateDateColumn()
+  updatedAt: Date
 
   @OneToMany(() => DocumentChunk, (chunk) => chunk.document, {
     cascade: true,

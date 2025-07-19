@@ -44,7 +44,9 @@ export class DocumentsController {
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Criar um novo documento' })
   @ApiResponse({ status: 201, description: 'Documento criado com sucesso' })
-  async create(@Body(ValidationPipe) createDto: CreateDocumentDto) {
+  async create(
+    @Body(new ValidationPipe({ whitelist: true })) createDto: CreateDocumentDto
+  ) {
     const document = await this.documentsService.create(createDto)
     return {
       success: true,
@@ -54,7 +56,7 @@ export class DocumentsController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'Listar todos os documentos' })
+  @ApiOperation({ summary: 'Listar documentos visíveis ao usuário' })
   @ApiResponse({
     status: 200,
     description: 'Lista de documentos retornada com sucesso',
@@ -138,7 +140,7 @@ export class DocumentsController {
   @ApiParam({ name: 'id', type: 'string' })
   async update(
     @Param('id', ParseUUIDPipe) id: string,
-    @Body(ValidationPipe) updateDto: UpdateDocumentDto,
+    @Body(new ValidationPipe({ whitelist: true })) updateDto: UpdateDocumentDto,
     @Request() req: { user: User }
   ) {
     const document = await this.documentsService.update(

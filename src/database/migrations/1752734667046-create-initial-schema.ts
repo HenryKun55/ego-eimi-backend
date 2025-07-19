@@ -19,6 +19,8 @@ export class CreateInitialSchema1752734667046 implements MigrationInterface {
         "sourceName" character varying NOT NULL,
         "content" text NOT NULL,
         "requiredRole" character varying NOT NULL,
+        "createdAt" TIMESTAMP DEFAULT now(),
+        "updatedAt" TIMESTAMP DEFAULT now(),
         CONSTRAINT "PK_ac51aa5181ee2036f5ca482857c" PRIMARY KEY ("id")
       )
     `)
