@@ -43,7 +43,8 @@ describe('LlmService', () => {
 
     const result = await service.askLLM(
       'Qual a capital da França?',
-      'Paris é a capital da França.'
+      'Paris é a capital da França.',
+      'employee'
     )
     expect(result).toBe(mockContent)
 
@@ -65,9 +66,9 @@ describe('LlmService', () => {
       get: jest.fn().mockReturnValue(undefined),
     } as any)
 
-    await expect(brokenService.askLLM('pergunta', 'contexto')).rejects.toThrow(
-      InternalServerErrorException
-    )
+    await expect(
+      brokenService.askLLM('pergunta', 'contexto', 'viewer')
+    ).rejects.toThrow(InternalServerErrorException)
   })
 
   it('should throw BadGatewayException if response is not ok', async () => {
@@ -78,7 +79,7 @@ describe('LlmService', () => {
       text: async () => 'Erro do modelo',
     })
 
-    await expect(service.askLLM('falha', 'falha')).rejects.toThrow(
+    await expect(service.askLLM('falha', 'falha', 'viewer')).rejects.toThrow(
       HttpException
     )
   })
@@ -86,7 +87,7 @@ describe('LlmService', () => {
   it('should throw HttpException if fetch throws error', async () => {
     ;(fetch as jest.Mock).mockRejectedValueOnce(new Error('Falha de rede'))
 
-    await expect(service.askLLM('falhou', 'rede')).rejects.toThrow(
+    await expect(service.askLLM('falhou', 'rede', 'viewer')).rejects.toThrow(
       HttpException
     )
   })

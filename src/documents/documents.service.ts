@@ -43,7 +43,7 @@ export class DocumentsService {
     }
 
     try {
-      await this.documentsChunkService.chunkAndIndex(
+      const chunks = await this.documentsChunkService.chunkAndIndex(
         createDto.content,
         document.id.toString(),
         createDto.chunkingOptions,
@@ -53,6 +53,7 @@ export class DocumentsService {
           batchSize: createDto.indexingOptions?.batchSize || 50,
         }
       )
+      this.logger.debug(`CHUNKS GERADOS:`, JSON.stringify(chunks, null, 2))
     } catch (err) {
       this.logger.error(
         `Erro ao indexar chunks para documento ${document.id}:`,

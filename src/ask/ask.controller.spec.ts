@@ -76,21 +76,26 @@ describe('AskController', () => {
     const chunks = [
       {
         content: 'A empresa oferece vale-alimentação.',
+        sourceName: 'Benefícios',
+        requiredRole: 'employee',
         metadata: {
           text: 'teste',
           documentId: 'doc-id-1',
-          requiredRole: 'admin',
+          requiredRole: 'employee',
         },
+
         score: 1,
       },
       {
         content: 'Plano de saúde incluso.',
+        sourceName: 'Benefícios',
+        requiredRole: 'employee',
         metadata: {
           text: 'teste',
           documentId: 'doc-id-2',
-          requiredRole: 'admin',
+          requiredRole: 'employee',
         },
-        score: 2,
+        score: 1,
       },
     ]
 
@@ -103,7 +108,8 @@ describe('AskController', () => {
 
     expect(llmService.askLLM).toHaveBeenCalledWith(
       dto.question,
-      expect.stringContaining('vale-alimentação')
+      expect.stringContaining('vale-alimentação'),
+      'employee'
     )
 
     expect(result).toEqual({

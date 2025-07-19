@@ -79,19 +79,31 @@ export class SeedController {
       },
     ]
 
+    this.logger.log(`🚀 Iniciando seed com ${docs.length} documentos...`)
+
     for (const doc of docs) {
+      this.logger.log(`🔎 Verificando documento: "${doc.sourceName}"`)
+
       const existing = await this.documentsService.findBySourceName(
         doc.sourceName
       )
-      if (!existing) {
-        await this.documentsService.createWithChunksAndEmbedding(doc)
-        this.logger.log(`Documento "${doc.sourceName}" criado com sucesso`)
-      } else {
-        this.logger.log(`Documento "${doc.sourceName}" já existe. Ignorando...`)
+
+      if (existing) {
+        await this.documentsService.remove(existing.id)
+        this.logger.warn(
+          `🗑 Documento "${doc.sourceName}" já existia — removido.`
+        )
       }
+
+      const created =
+        await this.documentsService.createWithChunksAndEmbedding(doc)
+
+      this.logger.log(
+        `✅ Documento "${doc.sourceName}" criado com sucesso (ID: ${created.id})`
+      )
     }
 
-    this.logger.log('Seed realizado com sucesso')
+    this.logger.log('🎉 Seed realizado com sucesso!')
     return {
       message: 'Seed realizado com sucesso',
       documents: docs.length,

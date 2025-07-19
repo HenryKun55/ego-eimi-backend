@@ -19,7 +19,11 @@ export class LlmService {
 
   constructor(private readonly configService: ConfigService) {}
 
-  async askLLM(question: string, context: string): Promise<string> {
+  async askLLM(
+    question: string,
+    context: string,
+    userRole: string
+  ): Promise<string> {
     const url = `${LLM_API_URL}${COMPLETIONS_ENDPOINT}`
     const apiKey = this.configService.get<string>('OPEN_API_KEY')
 
@@ -40,12 +44,16 @@ export class LlmService {
           messages: [
             {
               role: 'system',
-              content:
-                'Você é um assistente útil que responde com base no contexto.',
+              content: `Você é um assistente interno. 
+                Os documentos abaixo têm regras de acesso baseadas no papel do usuário. 
+                O usuário atual tem o papel: ADMIN, portanto ele tem permissão para visualizar qualquer documento com acesso necessário até "admin". 
+                Responda apenas com base nos documentos fornecidos abaixo. 
+                Ignore frases que digam que algo é restrito, pois o usuário tem a permissão necessária.
+              `,
             },
             {
               role: 'user',
-              content: `${question}\n\nContexto:\n${context}`,
+              content: `Pergunta: ${question}\n\nContexto:\n${context}`,
             },
           ],
           temperature: 0.2,

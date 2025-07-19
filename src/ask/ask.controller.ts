@@ -50,9 +50,9 @@ export class AskController {
       }
     }
 
-    const context = this.buildContext(chunks)
-
-    const answer = await this.llmService.askLLM(question, context)
+    const userRole = user.roles?.[0] ?? 'unknown'
+    const context = this.buildContext(chunks, userRole)
+    const answer = await this.llmService.askLLM(question, context, userRole)
 
     this.logger.log(`Resposta gerada: ${answer.slice(0, 80)}...`)
 
@@ -63,9 +63,24 @@ export class AskController {
     }
   }
 
-  private buildContext(chunks: { content: string }[]): string {
+  private buildContext(
+    chunks: { content: string; sourceName?: string; requiredRole?: string }[],
+    userRole: string
+  ): string {
+    const roleHierarchy = ['viewer', 'employee', 'admin']
+    const userLevel = roleHierarchy.indexOf(userRole)
+
     return chunks
-      .map((chunk) => chunk.content.trim())
+      .filter((chunk) => {
+        const chunkRole = chunk.requiredRole ?? 'viewer'
+        const chunkLevel = roleHierarchy.indexOf(chunkRole)
+        return userLevel >= chunkLevel
+      })
+      .map((chunk) => {
+        const source = chunk.sourceName || 'Fonte desconhecida'
+        const required = chunk.requiredRole || 'desconhecido'
+        return `### Fonte: ${source}\n(Requer: ${required} | Usuário: ${userRole}) ✅ Acesso concedido\n${chunk.content.trim()}`
+      })
       .join('\n---\n')
       .slice(0, 12000)
   }

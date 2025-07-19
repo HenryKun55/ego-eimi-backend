@@ -69,7 +69,14 @@ export class DocumentsChunkService {
     this.logger.log(`Iniciando processamento do documento: ${documentId}`)
 
     try {
-      const chunks = this.splitTextIntoChunks(content, chunkingOptions)
+      const chunks = this.splitTextIntoChunks(content, {
+        chunkSize: 300,
+        chunkOverlap: 60,
+        minChunkSize: 80,
+        ...chunkingOptions,
+      })
+      this.logger.log(`Chunking: ${content.slice(0, 80)}...`)
+      this.logger.log(`Documento ${documentId} gerou ${chunks.length} chunks`)
 
       const { batchSize = 50, embeddingOptions, metadata } = indexingOptions
       const indexing = await this.indexChunks(
@@ -95,9 +102,9 @@ export class DocumentsChunkService {
     options: ChunkingOptions = {}
   ): DocumentChunk[] {
     const {
-      chunkSize = 500,
-      chunkOverlap = 50,
-      minChunkSize = 100,
+      chunkSize = 300,
+      chunkOverlap = 60,
+      minChunkSize = 80,
       separators = ['\n\n', '\n', '.', '!', '?', ';', ' '],
       preserveFormatting = false,
     } = options
@@ -105,6 +112,24 @@ export class DocumentsChunkService {
     const cleanText = preserveFormatting
       ? text
       : text.replace(/\s+/g, ' ').trim()
+
+    this.logger.log(
+      `🧪 Texto recebido para chunking: (${cleanText.length} chars) → "${cleanText}"`
+    )
+
+    if (cleanText.length < minChunkSize) {
+      this.logger.warn(`📏 Conteúdo muito curto, criando chunk único`)
+      return [
+        {
+          id: randomUUID(),
+          text: cleanText,
+          metadata: {},
+          startIndex: 0,
+          endIndex: cleanText.length,
+        },
+      ]
+    }
+
     const chunks: DocumentChunk[] = []
     let index = 0
 
@@ -136,6 +161,13 @@ export class DocumentsChunkService {
       index = Math.max(end - chunkOverlap, index + 1)
     }
 
+    this.logger.log(`🧪 Total de chunks após processamento: ${chunks.length}`)
+    chunks.forEach((c, i) => {
+      this.logger.log(
+        `🔹 Chunk #${i + 1}: (${c.text.length} chars) "${c.text}"`
+      )
+    })
+
     return chunks
   }
 
@@ -158,19 +190,26 @@ export class DocumentsChunkService {
           embeddingOptions
         )
 
-        const points = embeddings.map((vector, j) => ({
-          id: batch[j].id,
-          vector,
-          payload: {
-            text: batch[j].text,
-            documentId,
-            chunkIndex: i + j,
-            startIndex: batch[j].startIndex,
-            endIndex: batch[j].endIndex,
-            ...baseMetadata,
-            ...batch[j].metadata,
-          },
-        }))
+        const points = embeddings.map((vector, j) => {
+          const text = batch[j].text
+          return {
+            id: batch[j].id,
+            vector,
+            payload: {
+              text,
+              documentId,
+              chunkIndex: i + j,
+              startIndex: batch[j].startIndex,
+              endIndex: batch[j].endIndex,
+              length: text.length,
+              wordCount: text.split(/\s+/).length,
+              ...baseMetadata,
+              ...batch[j].metadata,
+            },
+          }
+        })
+
+        this.logger.log(`Payload do chunk: ${points[0].payload.text}`)
 
         await this.qdrantService.upsertPoints(points)
         indexedChunks += points.length
