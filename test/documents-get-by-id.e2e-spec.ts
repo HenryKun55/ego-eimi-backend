@@ -1,4 +1,4 @@
-import * as request from 'supertest'
+import request from 'supertest'
 import { INestApplication } from '@nestjs/common'
 import { Test } from '@nestjs/testing'
 import { AppModule } from '../src/app.module'
@@ -24,7 +24,6 @@ describe('Documents (e2e) - GET by ID', () => {
 
     accessToken = loginRes.body.access_token
 
-    // Pegar o primeiro documento
     const docRes = await request(app.getHttpServer())
       .get('/documents')
       .set('Authorization', `Bearer ${accessToken}`)

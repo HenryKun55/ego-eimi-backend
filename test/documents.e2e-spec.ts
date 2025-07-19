@@ -1,4 +1,4 @@
-import * as request from 'supertest'
+import request from 'supertest'
 import { INestApplication } from '@nestjs/common'
 import { Test } from '@nestjs/testing'
 import { AppModule } from '../src/app.module'
@@ -15,10 +15,8 @@ describe('Documents (e2e)', () => {
     app = module.createNestApplication()
     await app.init()
 
-    // Executa o seed
     await request(app.getHttpServer()).post('/seed')
 
-    // Login com funcionário
     const loginRes = await request(app.getHttpServer())
       .post('/auth/login')
       .send({ email: 'henrique@empresa.com', password: '123456' })
