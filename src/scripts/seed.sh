@@ -2,7 +2,7 @@
 
 set -e
 
-BACKEND_URL=${BACKEND_URL:-http://localhost:3000}
+BACKEND_URL=${BACKEND_URL:-http://backend:3000}
 
 echo "⏳ Aguardando backend ficar disponível..."
 

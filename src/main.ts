@@ -6,12 +6,13 @@ import { ValidationPipe, Logger } from '@nestjs/common'
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger'
 import { ConfigService } from '@nestjs/config'
 
+const isProduction = process.env.NODE_ENV === 'production'
+
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
-    logger:
-      process.env.NODE_ENV === 'production'
-        ? ['error', 'warn']
-        : ['log', 'error', 'warn', 'debug', 'verbose'],
+    logger: isProduction
+      ? ['error', 'warn']
+      : ['log', 'error', 'warn', 'debug', 'verbose'],
   })
   const configService = app.get(ConfigService)
   const logger = new Logger('Bootstrap')
@@ -39,8 +40,21 @@ async function bootstrap() {
   SwaggerModule.setup('api', app, document)
 
   app.enableCors({
-    origin: configService.get('FRONTEND_URL', 'http://localhost:5173'),
-    credentials: configService.get('CORS_CREDENTIALS', true),
+    origin: (origin, callback) => {
+      const allowedOrigins = [
+        'http://localhost:4173',
+        'http://localhost:5173',
+        'http://frontend:4173',
+        'https://seu-front.vercel.app',
+      ]
+
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true)
+      } else {
+        callback(new Error(`CORS bloqueado para origem: ${origin}`))
+      }
+    },
+    credentials: true,
   })
 
   const port: number = configService.get('PORT', 3000)

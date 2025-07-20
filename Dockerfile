@@ -4,7 +4,9 @@ WORKDIR /app
 
 COPY . .
 
-RUN apt update && apt install -y netcat-openbsd
+RUN apt update 
+RUN apt install -y netcat-openbsd
+RUN apt install -y curl
 RUN bun add -g @nestjs/cli
 RUN bun install
 RUN bun run build
