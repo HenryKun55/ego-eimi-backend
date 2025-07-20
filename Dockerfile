@@ -2,10 +2,10 @@ FROM oven/bun:1
 
 WORKDIR /app
 
-COPY apps/backend ./
-COPY package.json ./
-COPY bun.lockb ./
-COPY tsconfig.json ./
+COPY apps/backend/ ./
+COPY apps/backend/package.json ./package.json
+COPY apps/backend/bun.lockb ./bun.lockb
+COPY apps/backend/tsconfig.json ./tsconfig.json
 
 RUN apt update && apt install -y netcat-openbsd curl
 RUN bun add -g @nestjs/cli
