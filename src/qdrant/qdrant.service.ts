@@ -69,6 +69,27 @@ export class QdrantService implements OnModuleInit {
         throw indexError
       }
     }
+
+    if (this.configService.get('CLEAR_QDRANT_ON_BOOT') === 'true') {
+      await this.clearCollection()
+    }
+  }
+
+  async clearCollection(): Promise<void> {
+    try {
+      await this.client.delete(this.collectionName, {
+        filter: {},
+      })
+      this.logger.warn(
+        `🧹 Collection "${this.collectionName}" limpa com sucesso.`
+      )
+    } catch (error) {
+      this.logger.error(
+        `❌ Erro ao limpar a collection "${this.collectionName}":`,
+        error
+      )
+      throw error
+    }
   }
 
   getClient(): QdrantClient {
