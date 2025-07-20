@@ -46,6 +46,10 @@ describe('Ask (e2e)', () => {
     viewerToken = viewerLogin.body.access_token
   })
 
+  afterEach(async () => {
+    await app.close()
+  })
+
   it('employee deve acessar documento de funcionário', async () => {
     const res = await request(app.getHttpServer())
       .post('/ask')
@@ -110,9 +114,5 @@ describe('Ask (e2e)', () => {
 
     expect(answer).not.toMatch(restrictTerms)
     expect(answer).toMatch(/manual|calendário|valores|cultura|eventos/)
-  })
-
-  afterAll(async () => {
-    await app.close()
   })
 })

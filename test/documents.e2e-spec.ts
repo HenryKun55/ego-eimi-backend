@@ -24,6 +24,10 @@ describe('Documents (e2e)', () => {
     accessToken = loginRes.body.access_token
   })
 
+  afterEach(async () => {
+    await app.close()
+  })
+
   it('GET /documents - retorna documentos com token válido (employee)', async () => {
     const res = await request(app.getHttpServer())
       .get('/documents')
@@ -38,9 +42,5 @@ describe('Documents (e2e)', () => {
       'message',
       'Documentos listados com sucesso'
     )
-  })
-
-  afterAll(async () => {
-    await app.close()
   })
 })

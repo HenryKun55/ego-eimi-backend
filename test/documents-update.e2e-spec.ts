@@ -31,6 +31,10 @@ describe('Documents (e2e) - Update', () => {
     documentId = docRes.body.data?.[0]?.id
   })
 
+  afterEach(async () => {
+    await app.close()
+  })
+
   it('PATCH /documents/:id - atualiza documento existente', async () => {
     const res = await request(app.getHttpServer())
       .patch(`/documents/${documentId}`)
@@ -48,9 +52,5 @@ describe('Documents (e2e) - Update', () => {
       'message',
       'Documento atualizado com sucesso'
     )
-  })
-
-  afterAll(async () => {
-    await app.close()
   })
 })

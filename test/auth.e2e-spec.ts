@@ -15,6 +15,10 @@ describe('Auth (e2e)', () => {
     await app.init()
   })
 
+  afterEach(async () => {
+    await app.close()
+  })
+
   it('/auth/login (POST)', async () => {
     const res = await request(app.getHttpServer())
       .post('/auth/login')
@@ -23,9 +27,5 @@ describe('Auth (e2e)', () => {
     expect(res.status).toBe(200)
     expect(res.body).toHaveProperty('access_token')
     expect(typeof res.body.access_token).toBe('string')
-  })
-
-  afterAll(async () => {
-    await app.close()
   })
 })

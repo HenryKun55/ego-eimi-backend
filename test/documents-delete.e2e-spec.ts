@@ -24,6 +24,10 @@ describe('Documents (e2e) - Delete', () => {
     accessToken = loginRes.body.access_token
   })
 
+  afterEach(async () => {
+    await app.close()
+  })
+
   it('DELETE /documents/:id - remove documento existente', async () => {
     const createRes = await request(app.getHttpServer())
       .post('/documents')
@@ -43,9 +47,5 @@ describe('Documents (e2e) - Delete', () => {
       .expect(204)
 
     expect(res.body).toEqual({})
-  })
-
-  afterAll(async () => {
-    await app.close()
   })
 })

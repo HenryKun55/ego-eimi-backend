@@ -31,6 +31,10 @@ describe('Documents (e2e) - GET by ID', () => {
     documentId = docRes.body.data?.[0]?.id
   })
 
+  afterEach(async () => {
+    await app.close()
+  })
+
   it('GET /documents/:id - retorna documento específico', async () => {
     const res = await request(app.getHttpServer())
       .get(`/documents/${documentId}`)
@@ -44,9 +48,5 @@ describe('Documents (e2e) - GET by ID', () => {
       'message',
       'Documento encontrado com sucesso'
     )
-  })
-
-  afterAll(async () => {
-    await app.close()
   })
 })

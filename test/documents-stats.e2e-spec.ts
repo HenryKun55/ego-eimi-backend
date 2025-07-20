@@ -32,6 +32,10 @@ describe('Documents (e2e) - Stats', () => {
     documentId = docsRes.body.data?.[0]?.id
   })
 
+  afterEach(async () => {
+    await app.close()
+  })
+
   it('GET /documents/:id/stats - retorna estatísticas do documento', async () => {
     const res = await request(app.getHttpServer())
       .get(`/documents/${documentId}/stats`)
@@ -48,9 +52,5 @@ describe('Documents (e2e) - Stats', () => {
     expect(res.body.data).toHaveProperty('document')
     expect(res.body.data).toHaveProperty('averageChunkSize')
     expect(res.body.data).toHaveProperty('totalChunks')
-  })
-
-  afterAll(async () => {
-    await app.close()
   })
 })

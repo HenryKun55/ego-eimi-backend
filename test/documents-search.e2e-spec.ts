@@ -24,6 +24,10 @@ describe('Documents (e2e) - Search', () => {
     accessToken = loginRes.body.access_token
   })
 
+  afterEach(async () => {
+    await app.close()
+  })
+
   it('GET /documents/search - retorna resultados com query válida', async () => {
     const res = await request(app.getHttpServer())
       .get('/documents/search')
@@ -36,9 +40,5 @@ describe('Documents (e2e) - Search', () => {
     expect(Array.isArray(res.body.data)).toBe(true)
     expect(res.body).toHaveProperty('query', 'férias')
     expect(res.body).toHaveProperty('message', 'Busca realizada com sucesso')
-  })
-
-  afterAll(async () => {
-    await app.close()
   })
 })

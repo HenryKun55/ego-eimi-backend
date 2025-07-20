@@ -15,6 +15,10 @@ describe('Seed (e2e)', () => {
     await app.init()
   })
 
+  afterEach(async () => {
+    await app.close()
+  })
+
   it('POST /seed - deve criar usuários e documentos com sucesso', async () => {
     const res = await request(app.getHttpServer()).post('/seed').expect(201)
 
@@ -28,9 +32,5 @@ describe('Seed (e2e)', () => {
 
     expect(res.body.users).toBeGreaterThanOrEqual(3)
     expect(res.body.documents).toBeGreaterThanOrEqual(6)
-  })
-
-  afterAll(async () => {
-    await app.close()
   })
 })
