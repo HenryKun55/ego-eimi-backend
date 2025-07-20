@@ -96,7 +96,7 @@ describe('Ask (e2e)', () => {
 
     expect(res.body.success).toBe(true)
     expect(res.body.data.answer.toLowerCase()).toMatch(
-      /calendário|eventos|datas/
+      'não há informação suficiente nos documentos disponíveis para responder com segurança.'
     )
   })
 
@@ -113,6 +113,8 @@ describe('Ask (e2e)', () => {
     const restrictTerms = /vale[-\s]?alimentação|plano|home|auxílio/
 
     expect(answer).not.toMatch(restrictTerms)
-    expect(answer).toMatch(/manual|calendário|valores|cultura|eventos/)
+    expect(answer).toMatch(
+      'não há informação suficiente nos documentos disponíveis para responder com segurança.'
+    )
   })
 })
