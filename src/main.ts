@@ -19,7 +19,9 @@ async function bootstrap() {
     })
   )
 
-  app.useGlobalPipes(new ValidationPipe({ whitelist: true }))
+  app.useGlobalPipes(
+    new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true })
+  )
 
   const swaggerConfig = new DocumentBuilder()
     .setTitle(configService.get('APP_NAME', 'Ego Eimi API'))
