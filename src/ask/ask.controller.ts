@@ -6,6 +6,8 @@ import {
   Req,
   Logger,
   BadRequestException,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common'
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard'
 import { LlmService } from '../llm/llm.service'
@@ -25,6 +27,7 @@ export class AskController {
   ) {}
 
   @Post()
+  @HttpCode(HttpStatus.OK)
   async ask(
     @Body() body: AskRequestDto,
     @Req() req: ExpressRequest & { user: LocalStrategyUserOutput }
