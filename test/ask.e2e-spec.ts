@@ -51,7 +51,7 @@ describe('Ask (e2e)', () => {
       .post('/ask')
       .set('Authorization', `Bearer ${employeeToken}`)
       .send({ question: 'Quais os benefícios oferecidos pela empresa?' })
-      .expect(201)
+      .expect(200)
 
     expect(res.body.success).toBe(true)
     expect(res.body.data.answer.toLowerCase()).toMatch(/benefício|vale|plano/)
@@ -62,7 +62,7 @@ describe('Ask (e2e)', () => {
       .post('/ask')
       .set('Authorization', `Bearer ${employeeToken}`)
       .send({ question: 'Qual é o lucro da empresa em 2025?' })
-      .expect(201)
+      .expect(200)
 
     expect(res.body.success).toBe(true)
     const chunks = res.body.data.chunks as any[]
@@ -77,7 +77,7 @@ describe('Ask (e2e)', () => {
       .post('/ask')
       .set('Authorization', `Bearer ${adminToken}`)
       .send({ question: 'Qual é o lucro da empresa em 2025?' })
-      .expect(201)
+      .expect(200)
 
     expect(res.body.success).toBe(true)
     expect(res.body.data.answer.toLowerCase()).toMatch(/lucro|milh|finance/i)
@@ -88,7 +88,7 @@ describe('Ask (e2e)', () => {
       .post('/ask')
       .set('Authorization', `Bearer ${viewerToken}`)
       .send({ question: 'Onde vejo o calendário da empresa?' })
-      .expect(201)
+      .expect(200)
 
     expect(res.body.success).toBe(true)
     expect(res.body.data.answer.toLowerCase()).toMatch(
@@ -101,7 +101,7 @@ describe('Ask (e2e)', () => {
       .post('/ask')
       .set('Authorization', `Bearer ${viewerToken}`)
       .send({ question: 'Quais são os benefícios da empresa?' })
-      .expect(201)
+      .expect(200)
 
     expect(res.body.success).toBe(true)
 
