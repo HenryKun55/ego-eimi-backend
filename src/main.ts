@@ -1,18 +1,30 @@
 import 'pgvector/pg'
+import helmet from 'helmet'
 import { NestFactory } from '@nestjs/core'
 import { AppModule } from './app.module'
-import { ValidationPipe } from '@nestjs/common'
+import { ValidationPipe, Logger } from '@nestjs/common'
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger'
+import { ConfigService } from '@nestjs/config'
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule)
+  const configService = app.get(ConfigService)
+  const logger = new Logger('Bootstrap')
+
+  app.use(
+    helmet({
+      contentSecurityPolicy: false,
+      crossOriginEmbedderPolicy: false,
+      hidePoweredBy: true,
+    })
+  )
 
   app.useGlobalPipes(new ValidationPipe({ whitelist: true }))
 
   const swaggerConfig = new DocumentBuilder()
-    .setTitle('Ego Eimi API')
+    .setTitle(configService.get('APP_NAME', 'Ego Eimi API'))
     .setDescription('API de documentos com embeddings e busca vetorial')
-    .setVersion('1.0')
+    .setVersion(configService.get('APP_VERSION', '1.0'))
     .addBearerAuth()
     .build()
 
@@ -20,9 +32,14 @@ async function bootstrap() {
   SwaggerModule.setup('api', app, document)
 
   app.enableCors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+    origin: configService.get('FRONTEND_URL', 'http://localhost:5173'),
+    credentials: configService.get('CORS_CREDENTIALS', true),
   })
 
-  await app.listen(3000)
+  const port: number = configService.get('PORT', 3000)
+  await app.listen(port)
+
+  logger.log(`🚀 Application running on port ${port}`)
 }
+
 void bootstrap()

@@ -14,6 +14,7 @@ import { Request as ExpressRequest } from 'express'
 import { LocalStrategyUserOutput } from '../auth/@types/user'
 import { AskRequestDto } from './dtos/ask.dto'
 
+@UseGuards(JwtAuthGuard)
 @Controller('ask')
 export class AskController {
   private readonly logger = new Logger(AskController.name)
@@ -23,7 +24,6 @@ export class AskController {
     private readonly llmService: LlmService
   ) {}
 
-  @UseGuards(JwtAuthGuard)
   @Post()
   async ask(
     @Body() body: AskRequestDto,

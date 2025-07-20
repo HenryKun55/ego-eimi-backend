@@ -11,11 +11,11 @@ import { AuthService } from './auth.service'
 import { Request as ExpressRequest } from 'express'
 import { UserOutput } from '../@types/user'
 
+@UseGuards(LocalAuthGuard)
 @Controller('auth')
 export class AuthController {
   constructor(private authService: AuthService) {}
 
-  @UseGuards(LocalAuthGuard)
   @Post('login')
   @HttpCode(HttpStatus.OK)
   async login(@Request() req: ExpressRequest & { user: UserOutput }) {
