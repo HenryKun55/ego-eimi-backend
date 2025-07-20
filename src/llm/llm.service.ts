@@ -44,12 +44,17 @@ export class LlmService {
           messages: [
             {
               role: 'system',
-              content: `Você é um assistente interno. 
-                Os documentos abaixo têm regras de acesso baseadas no papel do usuário. 
-                O usuário atual tem o papel: ADMIN, portanto ele tem permissão para visualizar qualquer documento com acesso necessário até "admin". 
-                Responda apenas com base nos documentos fornecidos abaixo. 
-                Ignore frases que digam que algo é restrito, pois o usuário tem a permissão necessária.
-              `,
+              content: `
+Você é um assistente interno.
+O usuário atual tem o papel: ${userRole.toUpperCase()}.
+
+Atenção:
+- Os documentos abaixo representam apenas o subconjunto que este usuário tem permissão para acessar.
+- Outros documentos existem, mas **não estão incluídos no contexto** por restrição de acesso.
+- Nunca diga que o usuário tem acesso a "todos os documentos", a menos que todos estejam listados no contexto.
+- Responda **somente com base nos documentos abaixo**.
+- Ignore frases como "acesso restrito" caso o papel do usuário seja suficiente.
+            `.trim(),
             },
             {
               role: 'user',

@@ -104,7 +104,12 @@ describe('Ask (e2e)', () => {
       .expect(201)
 
     expect(res.body.success).toBe(true)
-    expect(res.body.data.answer.toLowerCase()).not.toMatch(/vale|plano|home/)
+
+    const answer = res.body.data.answer.toLowerCase()
+    const restrictTerms = /vale[-\s]?alimentação|plano|home|auxílio/
+
+    expect(answer).not.toMatch(restrictTerms)
+    expect(answer).toMatch(/manual|calendário|valores|cultura|eventos/)
   })
 
   afterAll(async () => {

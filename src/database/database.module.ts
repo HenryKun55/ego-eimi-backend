@@ -19,7 +19,7 @@ import * as path from 'path'
         entities: [path.join(__dirname, '..', '**', '*.entity.{js,ts}')],
         synchronize: false,
         migrationsRun: false,
-        logging: true,
+        logging: false,
       }),
       dataSourceFactory: async (options) => {
         const dataSource = new DataSource(options)
