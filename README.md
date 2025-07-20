@@ -1,6 +1,6 @@
 # 🧠 Ego Eimi RAG Backend
 
-Este é o backend de um sistema RAG (Retrieval-Augmented Generation), que permite fazer perguntas sobre documentos privados de forma segura, contextualizada e rápida. O projeto é parte de um desafio técnico da Ego Eimi e foi cuidadosamente desenvolvido como um MVP funcional, com atenção especial à arquitetura, boas práticas e extensibilidade.
+Este é o backend de um sistema RAG (Retrieval-Augmented Generation), que permite fazer perguntas sobre documentos privados de forma segura, contextualizada e rápida. O projeto é parte do desafio técnico da Ego Eimi e foi cuidadosamente desenvolvido como um MVP funcional, com atenção à arquitetura, testes e extensibilidade.
 
 ---
 
@@ -9,176 +9,174 @@ Este é o backend de um sistema RAG (Retrieval-Augmented Generation), que permit
 - **NestJS** com arquitetura modular
 - **Qdrant** para armazenamento vetorial
 - **Groq Cloud (nomic-embed + LLM)** para embeddings e completions
-- **TypeORM + PostgreSQL** para persistência de documentos e usuários
-- **JWT Auth + RBAC (roles)** para segurança e controle de acesso
-- **Zod** para validação de resposta da API
-- **Swagger** para documentação automática
+- **TypeORM + PostgreSQL** para persistência
+- **JWT Auth + RBAC** para segurança baseada em papéis
+- **Zod** para validação robusta
+- **Swagger** em `/api` para documentação automática
+- **Bun** como runtime e gerenciador de pacotes
 
 ---
 
-## 🧠 Como funciona (fluxo RAG com ACL)
+## 🧠 Fluxo RAG com ACL
 
-```
+```text
 ┌──────────────┐
-│ Usuário JWT  │
+│  Usuário JWT │
 └──────┬───────┘
        │ pergunta
        ▼
-┌──────────────┐
-│ Busca vetorial (Qdrant)
-│ com embeddings filtrados por ACL
-└──────┬───────┘
-       │ chunks relevantes
+┌────────────────────────┐
+│ Busca vetorial (Qdrant)│ ← filtro por role (ACL)
+└──────┬─────────────────┘
+       │
        ▼
-┌──────────────┐
-│ LLM (Groq/OpenAI)
-│ responde com base no contexto
-└──────┬───────┘
-       │ resposta
-       ▼
-┌──────────────┐
-│ Retorno final para usuário
-└──────────────┘
+┌────────────────────────┐
+│ LLM (Groq) responde    │ ← contexto + prompt
+└────────────────────────┘
 ```
 
 ---
 
-## 🚀 Como rodar localmente
+## ▶️ Como rodar
+
+### Configure as variáveis de ambiente
+
+Copie os arquivos de exemplo:
 
 ```bash
-# 1. Clone o projeto
-git clone https://github.com/seuusuario/ego-eimi-backend.git
-cd ego-eimi-backend
-
-# 2. Instale as dependências
-npm install
-
-# 3. Copie as variáveis de ambiente
 cp .env.example .env
 ```
 
-### 🔐 Variáveis de ambiente
+Edite os arquivos `.env` com suas configurações locais (ou mantenha os valores padrão para rodar com Docker local).
 
-```env
-OPEN_API_KEY=sk-...
-QDRANT_URL=http://localhost:6333
-QDRANT_API_KEY=
-JWT_SECRET=supertoken
-DATABASE_URL=postgres://user:pass@localhost:5432/db
-```
+---
 
-### 🔄 Rodar com docker-compose (Qdrant + PostgreSQL)
+## 🐳 Como rodar via Docker (recomendado)
+
+Use o `docker-compose` da raiz do projeto:
 
 ```bash
-docker-compose up -d
-```
-
-### 🧪 Rodar localmente
-
-```bash
-npm run start:dev
+docker compose up -d
 ```
 
 ---
 
-## 📌 Principais endpoints
+### Manualmente (sem docker)
 
-### 🧾 Documentos
+Configure o banco e Qdrant localmente, e use o `.env` correspondente (veja abaixo).
 
-```
-POST    /documents          # cria documento com chunks e embeddings
-GET     /documents          # lista documentos permitidos (RBAC)
-GET     /documents/search   # busca semântica ACL-aware
-GET     /documents/:id      # detalhe
-GET     /documents/:id/stats
-PATCH   /documents/:id
-DELETE  /documents/:id
-```
+---
 
-### 💬 LLM + RAG
+## ⚙️ Variáveis de Ambiente
 
-```
-POST    /ask
-```
+### `.env`
 
-Payload:
-
-```json
-{ "question": "Qual é a política de segurança da empresa?" }
-```
-
-Retorno:
-
-```json
-{ "data": { "answer": "A política é..." } }
+```env
+JWT_SECRET=...
+OPEN_API_KEY=...
+QDRANT_URL=...
+QDRANT_API_KEY=...
+QDRANT_COLLECTION=document_chunks
+DB_HOST=localhost
+DB_PORT=5432
+DB_USER=postgres
+DB_PASS=postgres
+DB_DATABASE=test
+USE_EMBEDDING_MOCK=true
+BACKEND_URL=http://localhost:3000
+FRONTEND_URL=http://localhost:5173
+CLEAR_QDRANT_ON_BOOT=true
 ```
 
-### 🔐 Auth e usuários
+## Em seguida:
 
-```
-POST    /auth/login         # retorna JWT
-POST    /users              # cria novo usuário
+```bash
+cd ego-eimi-backend
+bun install
+bun run prepare:full-clean
+bun run dev
 ```
 
 ---
 
 ## 🧪 Testes
 
-Os testes serão implementados no sábado, incluindo:
+### Unitários
 
-- [ ] Unitários para services (`documents`, `llm`, `embedding`)
-- [ ] E2E com supertest para `/ask` e `/documents/search`
-- [ ] Mock para Groq e Qdrant
+```bash
+bun run test
+```
+
+### End-to-End (e2e)
+
+```bash
+bun run test:e2e
+```
+
+> ✅ Os testes e2e isolam o app e fazem seed local antes de cada suite. Use `--runInBand` se necessário.
 
 ---
 
-## 📁 Estrutura de pastas
+# 📂 Estrutura do Projeto
 
-```
+Esta é a arquitetura de pastas do projeto, desenhada para ser modular, escalável e de fácil manutenção, seguindo as melhores práticas do NestJS.
+
+```text
 src/
-├── auth/              # login com JWT
-├── users/             # criação e busca de usuários
-├── documents/         # serviço principal de documentos
-├── documents-chunk/   # indexação e split dos chunks
-├── embedding/         # integração com Groq Embed
-├── qdrant/            # armazenamento vetorial
-├── llm/               # geração de resposta final (Groq chat)
-├── ask/               # orquestrador do ciclo RAG
-├── search/            # endpoint de debug de embeddings
-└── main.ts
+├── 🔐 auth/            ← Autenticação JWT, guards e-strategies
+├── 👥 users/            ← Gestão de usuários e permissões
+├── 📄 documents/        ← CRUD de documentos, ACL e busca
+├── 🧩 documents-chunk/  ← Chunking de documentos para RAG
+├── 🤖 ask/              ← Endpoint RAG conversacional
+├── 🔍 search/           ← Busca semântica avançada
+├── 🧠 embedding/        ← Geração de embeddings (Groq)
+├── 🦾 llm/              ← Integração com modelos de linguagem
+├── 📊 qdrant/           ← Cliente para vector database (Qdrant)
+├── 🗄️ database/         ← Configuração TypeORM e migrations
+├── 🛠️ scripts/          ← Utilitários de banco e deploy
+├── 🌱 seed/             ← População de dados para teste
+├── 🔗 common/           ← Middlewares e utilitários globais
+├── 📋 @types/           ← Definições TypeScript globais
+├── 📱 app.module.ts     ← Módulo raiz da aplicação
+└── 🚀 main.ts            ← Bootstrap do servidor NestJS
 ```
 
 ---
 
-## 🧠 Trade-offs e decisões
+## 🤖 Uso de IA (transparência)
 
-| Decisão                                  | Justificativa                  |
-| ---------------------------------------- | ------------------------------ |
-| ✅ RAG com Groq e Qdrant                 | Alta performance + baixo custo |
-| ✅ ACL via campo `requiredRole` no chunk | Flexível e simples             |
-| ✅ Indexação por chunk e metadata        | Rápido, filtrável              |
-| ✅ Zod para validar resposta da LLM      | Evita falhas em produção       |
-| ✅ Design modular em services isolados   | Fácil de escalar               |
+- Criação de testes baseados em cada módulo com prompt:
 
----
+  > “Gere testes unitários baseados nos modules, services e controllers do Nest.”
 
-## ⏱ Log de desenvolvimento
-
-- ✅ Estrutura inicial criada com NestJS
-- ✅ Integração com Qdrant e Groq concluída
-- ✅ Upload + indexação de documentos em chunk
-- ✅ MVP do endpoint `/ask` funcional
-- ✅ ACL por role de usuário
-- ✅ Swagger disponível em `/api`
+- Geração de schemas Zod com ChatGPT + revisão manual.
+- Geração de estrutura básica dos services e mocks.
 
 ---
 
-## 👤 Autor
+## 🧠 Decisões & Trade-offs
 
-Desenvolvido por [Flávio Henrique](https://github.com/seuusuario) como desafio técnico da Ego Eimi.
+- Mock de embedding ativado por `.env` para testes locais (sem API Key)
+- `CLEAR_QDRANT_ON_BOOT=true` permite testes limpos com docker up/down
+- Substituição de deploy real por ambiente local confiável
 
 ---
 
-## 📬 Licença
+## 📈 Performance
 
-MIT
+- Busca vetorial ACL-aware com filtro dinâmico
+- Indexação com controle de batch e retries
+- Resposta mockada: ~600ms | real: depende do modelo
+
+---
+
+## 🧩 Integrações
+
+- `POST /ask`: recebe pergunta e contexto opcional
+- `POST /documents`: cria documentos com role mínima
+- `GET /documents`: ACL-aware
+- `POST /seed`: gera dados de teste (usuários, docs, etc)
+
+---
+
+> Feito com engenharia pragmática, cobertura de testes e uma coquinha gelada.
